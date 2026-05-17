@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 
-export default function SpectrumView({ analysis }) {
+export default function SpectrumView({ analysis, theme }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -20,11 +20,17 @@ export default function SpectrumView({ analysis }) {
     const n = spectrum.length;
     if (n === 0) return;
 
+    // Read colors dynamically from active CSS theme variables
+    const bodyStyle = getComputedStyle(document.body);
+    const accentColor = bodyStyle.getPropertyValue("--accent").trim() || "#0ea5e9";
+    const dangerColor = bodyStyle.getPropertyValue("--danger").trim() || "#ef4444";
+    const purpleColor = bodyStyle.getPropertyValue("--purple").trim() || "#a855f7";
+
     const maxAmp = Math.max(...spectrum.map(s => s.amplitude), 1);
     const barW = W / n;
 
     // Background grid
-    ctx.strokeStyle = "rgba(6,182,212,0.06)";
+    ctx.strokeStyle = "rgba(255,255,255,0.03)";
     ctx.lineWidth = 0.5;
     for (let y = 0; y < H; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
@@ -37,23 +43,32 @@ export default function SpectrumView({ analysis }) {
       const isNull = s.amplitude < 2;
 
       const grad = ctx.createLinearGradient(0, H - h, 0, H);
-      if (isNull) { grad.addColorStop(0, "rgba(239,68,68,0.3)"); grad.addColorStop(1, "rgba(239,68,68,0.1)"); }
-      else if (isDynamic) { grad.addColorStop(0, "rgba(59,130,246,0.8)"); grad.addColorStop(1, "rgba(6,182,212,0.3)"); }
-      else { grad.addColorStop(0, "rgba(148,163,184,0.4)"); grad.addColorStop(1, "rgba(148,163,184,0.1)"); }
+      if (isNull) { 
+        grad.addColorStop(0, dangerColor + "66"); 
+        grad.addColorStop(1, dangerColor + "1a"); 
+      }
+      else if (isDynamic) { 
+        grad.addColorStop(0, accentColor + "cc"); 
+        grad.addColorStop(1, accentColor + "33"); 
+      }
+      else { 
+        grad.addColorStop(0, "rgba(148,163,184,0.3)"); 
+        grad.addColorStop(1, "rgba(148,163,184,0.06)"); 
+      }
 
       ctx.fillStyle = grad;
       ctx.fillRect(i * barW + 1, H - h, barW - 2, h);
 
       // Top glow for dynamic
       if (isDynamic) {
-        ctx.fillStyle = "rgba(59,130,246,0.9)";
+        ctx.fillStyle = accentColor;
         ctx.fillRect(i * barW + 1, H - h, barW - 2, 2);
       }
     }
 
     // Phase line overlay
     ctx.beginPath();
-    ctx.strokeStyle = "rgba(168,85,247,0.5)";
+    ctx.strokeStyle = purpleColor + "99";
     ctx.lineWidth = 1.5;
     for (let i = 0; i < n; i++) {
       const x = i * barW + barW / 2;
@@ -67,7 +82,7 @@ export default function SpectrumView({ analysis }) {
     ctx.font = "10px Inter, sans-serif";
     ctx.fillText("Subcarrier Index →", W - 120, H - 5);
     ctx.fillText("Amplitude ↑", 5, 15);
-  }, [analysis?.spectrum]);
+  }, [analysis?.spectrum, theme]);
 
   const cls = analysis?.classification || {};
 

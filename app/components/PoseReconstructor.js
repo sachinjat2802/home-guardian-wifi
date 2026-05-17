@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { User, ShieldAlert, Cpu, Heart, Wind, Compass, Sparkles, Moon } from "lucide-react";
 
-export default function PoseReconstructor({ entity }) {
+export default function PoseReconstructor({ entity, theme }) {
   const canvasRef = useRef(null);
   const hypnogramRef = useRef(null);
   const [angle, setAngle] = useState(0);
@@ -103,6 +103,30 @@ export default function PoseReconstructor({ entity }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Helper to blend alpha safely with active CSS variables
+    const parseAlpha = (colorStr, alphaVal) => {
+      if (colorStr.startsWith("#")) {
+        const hex = colorStr.replace("#", "");
+        let r, g, b;
+        if (hex.length === 3) {
+          r = parseInt(hex[0] + hex[0], 16);
+          g = parseInt(hex[1] + hex[1], 16);
+          b = parseInt(hex[2] + hex[2], 16);
+        } else {
+          r = parseInt(hex.substring(0, 2), 16);
+          g = parseInt(hex.substring(2, 4), 16);
+          b = parseInt(hex.substring(4, 6), 16);
+        }
+        return `rgba(${r}, ${g}, ${b}, ${alphaVal})`;
+      }
+      return colorStr;
+    };
+
+    const bodyStyle = getComputedStyle(document.body);
+    const accentColor = bodyStyle.getPropertyValue("--accent").trim() || "#06b6d4";
+    const dangerColor = bodyStyle.getPropertyValue("--danger").trim() || "#ef4444";
+    const purpleColor = bodyStyle.getPropertyValue("--purple").trim() || "#a855f7";
+
     let animId;
     let localAngle = 0;
 
@@ -130,7 +154,7 @@ export default function PoseReconstructor({ entity }) {
       const pulse = 1.0 + Math.sin(t * (hr / 60) * 2 * Math.PI) * 0.015;
 
       // Draw Grid / Scanning Floor
-      ctx.strokeStyle = "rgba(6, 182, 212, 0.1)";
+      ctx.strokeStyle = parseAlpha(accentColor, 0.1);
       ctx.lineWidth = 1;
       for (let r = 20; r <= 80; r += 20) {
         ctx.beginPath();
@@ -195,13 +219,13 @@ export default function PoseReconstructor({ entity }) {
         const size = Math.max(1, 2.5 * (focalLength / (focalLength + p.depth)));
         const alpha = 0.35 + (0.55 * (focalLength / (focalLength + p.depth)));
         
-        let glowColor = `rgba(6, 182, 212, ${alpha})`; // Cyan default
+        let glowColor = parseAlpha(accentColor, alpha); // Accent default
         if (entity.type === "cow" || entity.type === "buffalo") {
           glowColor = `rgba(16, 185, 129, ${alpha})`; // Green for livestock
         } else if (entity.status === "critical" || entity.type === "anomalous") {
-          glowColor = `rgba(239, 110, 110, ${alpha})`; // Red warning
+          glowColor = parseAlpha(dangerColor, alpha); // Warning red
         } else if (entity.status === "sleeping") {
-          glowColor = `rgba(168, 85, 247, ${alpha})`; // Purple for sleep
+          glowColor = parseAlpha(purpleColor, alpha); // Purple for sleep
         }
 
         ctx.fillStyle = glowColor;
@@ -278,16 +302,16 @@ export default function PoseReconstructor({ entity }) {
             ctx.moveTo(j1.x, j1.y);
             ctx.lineTo(j2.x, j2.y);
             ctx.strokeStyle = entity.status === "critical"
-              ? "rgba(239, 68, 68, 0.45)"
+              ? parseAlpha(dangerColor, 0.45)
               : entity.status === "sleeping"
-              ? "rgba(168, 85, 247, 0.45)"
-              : "rgba(34, 211, 238, 0.45)";
+              ? parseAlpha(purpleColor, 0.45)
+              : parseAlpha(accentColor, 0.45);
             ctx.stroke();
           }
         });
 
         // Draw joint nodes
-        ctx.fillStyle = entity.status === "critical" ? "#ef4444" : entity.status === "sleeping" ? "#a855f7" : "#06b6d4";
+        ctx.fillStyle = entity.status === "critical" ? dangerColor : entity.status === "sleeping" ? purpleColor : accentColor;
         Object.entries(projJoints).forEach(([name, joint]) => {
           const r = name === "head" ? 4 : 2.5;
           ctx.beginPath();
@@ -297,7 +321,7 @@ export default function PoseReconstructor({ entity }) {
       }
 
       // Live sweeping coordinate lock indicator
-      ctx.strokeStyle = "rgba(6, 182, 212, 0.3)";
+      ctx.strokeStyle = parseAlpha(accentColor, 0.3);
       ctx.lineWidth = 0.5;
       ctx.beginPath();
       ctx.moveTo(centerX - 90, centerY + 65);
@@ -314,7 +338,7 @@ export default function PoseReconstructor({ entity }) {
 
     render();
     return () => cancelAnimationFrame(animId);
-  }, [entity]);
+  }, [entity, theme]);
 
   // Hypnogram (Sleep Stage History) Rendering
   useEffect(() => {
@@ -408,14 +432,14 @@ export default function PoseReconstructor({ entity }) {
             <Cpu size={16} className="text-[var(--cyan)] animate-pulse" />
             <h4 className="text-xs font-mono uppercase tracking-widest text-[var(--cyan)]">DensePose CSI Spatial Reconstruction</h4>
           </div>
-          <span className="text-[9px] font-mono bg-black/40 border border-cyan-500/20 px-2 py-0.5 rounded text-cyan-400">
+          <span className="text-[9px] font-mono bg-black/40 border border-[var(--border-glass)] px-2 py-0.5 rounded text-[var(--accent)]">
             Phase Coherence: {(0.85 + Math.sin(angle) * 0.05).toFixed(3)}
           </span>
         </div>
 
         {/* 3D Canvas */}
         <div className="flex-1 flex items-center justify-center relative">
-          <canvas ref={canvasRef} width={280} height={240} className="max-w-full drop-shadow-[0_0_15px_rgba(6,182,212,0.15)]" />
+          <canvas ref={canvasRef} width={280} height={240} className="max-w-full drop-shadow-[0_0_15px_var(--accent-glow)]" />
           
           {/* Hologram details overlay */}
           <div className="absolute top-2 left-2 font-mono text-[9px] text-[var(--text-muted)] flex flex-col gap-0.5">
@@ -435,7 +459,7 @@ export default function PoseReconstructor({ entity }) {
         {/* Dynamic target card */}
         <div className="mt-3 bg-black/50 border border-[var(--border-glass)] p-3 rounded-lg flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`p-1.5 rounded-lg ${isSleeping ? "bg-purple-500/10 border border-purple-500/30 text-purple-400" : "bg-cyan-500/10 border border-cyan-500/30 text-cyan-400"}`}>
+            <div className={`p-1.5 rounded-lg ${isSleeping ? "bg-purple-500/10 border border-purple-500/30 text-purple-400" : "bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--accent)]"}`}>
               <User size={18} />
             </div>
             <div>
@@ -505,7 +529,7 @@ export default function PoseReconstructor({ entity }) {
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider block font-mono">Respiration RPM</span>
-                  <span className="text-base font-bold text-cyan-400 font-mono">{v.breathingRate} RPM (Stable)</span>
+                  <span className="text-base font-bold text-[var(--cyan)] font-mono">{v.breathingRate} RPM (Stable)</span>
                 </div>
               </div>
 

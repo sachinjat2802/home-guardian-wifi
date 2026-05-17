@@ -10,12 +10,13 @@ import VitalsPanel from "./components/VitalsPanel";
 import EventLog from "./components/EventLog";
 import SnnPanel from "./components/SnnPanel";
 import PoseReconstructor from "./components/PoseReconstructor";
-import { Shield, ShieldAlert, Play, Square, RefreshCw, Volume2, VolumeX, AlertOctagon } from "lucide-react";
+import { Shield, ShieldAlert, Play, Square, RefreshCw, Volume2, VolumeX, AlertOctagon, Palette } from "lucide-react";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [selectedEntityId, setSelectedEntityId] = useState(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [theme, setTheme] = useState("classic");
   const sensing = useWifiSensing();
 
   const audioCtxRef = useRef(null);
@@ -24,6 +25,13 @@ export default function Home() {
 
   const security = sensing.analysis?.security || {};
   const isTriggered = security.triggered;
+
+  // Apply active theme class to document body to trigger dynamic variables
+  useEffect(() => {
+    const classes = ["theme-classic", "theme-space", "theme-cyberpunk", "theme-aurora", "theme-polar"];
+    classes.forEach(c => document.body.classList.remove(c));
+    document.body.classList.add(`theme-${theme}`);
+  }, [theme]);
 
   // Initialize and modulate Siren Alarm synthesizer using Web Audio API
   useEffect(() => {
@@ -107,23 +115,30 @@ export default function Home() {
   }, [sensing.analysis?.entities, selectedEntityId]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#020408] text-gray-200">
+    <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
       
       {/* Visual threat warning boundary flashing overlay */}
       {isTriggered && (
-        <div className="fixed inset-0 border-[6px] border-red-500 animate-pulse pointer-events-none z-50 bg-red-500/[0.04]" />
+        <div className="fixed inset-0 border-[6px] border-[var(--danger)] animate-pulse pointer-events-none z-50 bg-[var(--danger)]/[0.04]" />
       )}
 
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} connected={sensing.connected} mode={sensing.mode} />
       
       <main className="flex-1 p-4 pl-2 overflow-y-auto flex flex-col gap-4">
-        <Header sensing={sensing} soundEnabled={soundEnabled} setSoundEnabled={setSoundEnabled} />
+        <Header 
+          sensing={sensing} 
+          soundEnabled={soundEnabled} 
+          setSoundEnabled={setSoundEnabled} 
+          theme={theme} 
+          setTheme={setTheme} 
+        />
         
         {activeTab === "dashboard" && (
           <DashboardView 
             sensing={sensing} 
             selectedEntityId={selectedEntityId} 
             setSelectedEntityId={setSelectedEntityId} 
+            theme={theme}
           />
         )}
         {activeTab === "spectrum" && <SpectrumView analysis={sensing.analysis} />}
@@ -149,24 +164,41 @@ export default function Home() {
   );
 }
 
-function Header({ sensing, soundEnabled, setSoundEnabled }) {
+function Header({ sensing, soundEnabled, setSoundEnabled, theme, setTheme }) {
   const security = sensing.analysis?.security || {};
   return (
-    <header className="flex justify-between items-center bg-white/[0.01] border border-[var(--border-glass)] px-4 py-3 rounded-2xl">
+    <header className="flex justify-between items-center bg-[var(--bg-card)] border border-[var(--border-glass)] px-4 py-3 rounded-2xl backdrop-blur-md transition-all duration-300">
       <div>
-        <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-gray-100 to-gray-400 bg-clip-text text-transparent">Home Guardian Spatial Analytics</h1>
+        <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-[var(--text-primary)] to-[var(--text-secondary)] bg-clip-text text-transparent">Home Guardian Spatial Analytics</h1>
         <p className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
           {sensing.connected ? `Live WiFi CSI sensing pipeline • Frame #${sensing.telemetry?.frame || 0}` : "Connecting to sensing server..."}
         </p>
       </div>
       <div className="flex items-center gap-3">
+        {/* Theme Switcher Selector */}
+        <div className="flex items-center gap-1.5 border-r border-[var(--border-glass)] pr-3 mr-1">
+          <Palette size={13} className="text-[var(--text-secondary)] animate-pulse" />
+          <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase">THEME:</span>
+          <select
+            value={theme}
+            onChange={(e) => setTheme(e.target.value)}
+            className="bg-black/40 border border-[var(--border-glass)] px-2.5 py-1 rounded-full text-[10px] font-mono text-[var(--accent)] font-bold focus:outline-none cursor-pointer hover:border-[var(--accent)]/50 transition-all duration-300 shadow-[0_0_10px_rgba(59,130,246,0.1)]"
+          >
+            <option value="classic">🟢 CYBER CLASSIC</option>
+            <option value="space">🌌 DEEP OBSIDIAN</option>
+            <option value="cyberpunk">🌸 NEON RETRO</option>
+            <option value="aurora">🌲 BOREAL AURORA</option>
+            <option value="polar">❄️ FROSTED POLAR</option>
+          </select>
+        </div>
+
         {/* Siren sound control indicator */}
         {security.triggered && (
           <button 
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`p-1.5 rounded-lg border flex items-center justify-center transition-all ${
               soundEnabled 
-                ? "bg-red-500/15 border-red-500/30 text-red-400 animate-bounce" 
+                ? "bg-[var(--danger)]/15 border-[var(--danger)]/30 text-[var(--danger)] animate-bounce" 
                 : "bg-white/5 border-white/5 text-gray-500"
             }`}
             title={soundEnabled ? "Mute Siren Alarm" : "Unmute Siren Alarm"}
@@ -181,14 +213,14 @@ function Header({ sensing, soundEnabled, setSoundEnabled }) {
             <select
               value={sensing.mode}
               onChange={(e) => sensing.changeMode(e.target.value)}
-              className="bg-black/60 border border-[var(--border-glass)] px-3 py-1.5 rounded-full text-[10px] font-mono text-cyan-400 font-bold focus:outline-none cursor-pointer hover:border-cyan-500/50 transition-all duration-300 shadow-[0_0_10px_rgba(6,182,212,0.15)]"
+              className="bg-black/40 border border-[var(--border-glass)] px-3 py-1.5 rounded-full text-[10px] font-mono text-[var(--cyan)] font-bold focus:outline-none cursor-pointer hover:border-[var(--cyan)]/50 transition-all duration-300"
             >
               <option value="simulation">📡 SIMULATION</option>
               <option value="real">🔌 REAL HARDWARE</option>
             </select>
           </div>
         ) : (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border border-red-500/30 bg-red-500/10 text-red-400 animate-pulse">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)] animate-pulse">
             <span className="status-dot danger" />
             OFFLINE
           </div>
@@ -204,7 +236,7 @@ function Header({ sensing, soundEnabled, setSoundEnabled }) {
   );
 }
 
-function DashboardView({ sensing, selectedEntityId, setSelectedEntityId }) {
+function DashboardView({ sensing, selectedEntityId, setSelectedEntityId, theme }) {
   const entities = sensing.analysis?.entities || [];
   const selectedEntity = entities.find(e => e.id === selectedEntityId);
 
@@ -219,8 +251,9 @@ function DashboardView({ sensing, selectedEntityId, setSelectedEntityId }) {
             analysis={sensing.analysis} 
             selectedEntityId={selectedEntityId}
             onSelectEntity={setSelectedEntityId}
+            theme={theme}
           />
-          <PoseReconstructor entity={selectedEntity} />
+          <PoseReconstructor entity={selectedEntity} theme={theme} />
         </div>
 
         {/* Dynamic biometric stats display */}

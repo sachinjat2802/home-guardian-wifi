@@ -44,7 +44,7 @@ export default function VitalsPanel({ analysis, signalHistory, selectedEntityId,
           <p className="text-[10px] text-[var(--text-muted)] font-mono">Stoer-Wagner multi-target subcarrier partition</p>
         </div>
         {selectedEntity && (
-          <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/40 border border-cyan-500/20 px-2 py-0.5 rounded">
+          <span className="text-[10px] font-mono text-[var(--accent)] bg-[var(--accent)]/10 border border-[var(--accent)]/20 px-2 py-0.5 rounded">
             Profiling: {selectedEntity.name}
           </span>
         )}
@@ -55,9 +55,9 @@ export default function VitalsPanel({ analysis, signalHistory, selectedEntityId,
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
           <BigVital 
             icon={Heart} 
-            color="rgba(239, 68, 68, 0.95)" 
-            bg="bg-red-500/5"
-            border="border-red-500/10"
+            color="var(--danger)" 
+            bg="bg-[var(--danger)]/5"
+            border="border-[var(--danger)]/10"
             label="Pulse Rate" 
             value={ev.heartRate || 0} 
             unit="BPM" 
@@ -65,9 +65,9 @@ export default function VitalsPanel({ analysis, signalHistory, selectedEntityId,
           />
           <BigVital 
             icon={Wind} 
-            color="rgba(34, 211, 238, 0.95)" 
-            bg="bg-cyan-500/5"
-            border="border-cyan-500/10"
+            color="var(--cyan)" 
+            bg="bg-[var(--cyan)]/5"
+            border="border-[var(--cyan)]/10"
             label="Respiration" 
             value={ev.breathingRate || 0} 
             unit="RPM" 
@@ -75,9 +75,9 @@ export default function VitalsPanel({ analysis, signalHistory, selectedEntityId,
           />
           <BigVital 
             icon={Activity} 
-            color="rgba(168, 85, 247, 0.95)" 
-            bg="bg-purple-500/5"
-            border="border-purple-500/10"
+            color="var(--purple)" 
+            bg="bg-[var(--purple)]/5"
+            border="border-[var(--purple)]/10"
             label="Heart Var (HRV)" 
             value={ev.hrv ? `${ev.hrv} ms` : "N/A"} 
             unit="" 
@@ -132,7 +132,7 @@ export default function VitalsPanel({ analysis, signalHistory, selectedEntityId,
                 onClick={() => onSelectEntity(e.id)}
                 className={`flex justify-between items-center p-2.5 rounded-lg border transition-all cursor-pointer ${
                   isSelected 
-                    ? "bg-cyan-500/10 border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.1)]" 
+                    ? "bg-[var(--accent)]/10 border-[var(--accent)]/30 shadow-[0_0_10px_var(--accent-glow)]" 
                     : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10"
                 }`}
               >
@@ -157,8 +157,8 @@ export default function VitalsPanel({ analysis, signalHistory, selectedEntityId,
                   {e.type !== 'appliance' && e.vitals.heartRate > 0 ? (
                     <div className="flex items-center gap-3">
                       <div className="flex flex-col items-end">
-                        <span className="text-[10px] font-mono font-bold text-red-400 flex items-center gap-1"><Heart size={8} /> {e.vitals.heartRate}</span>
-                        <span className="text-[9px] font-mono text-cyan-400 flex items-center gap-1 mt-0.5"><Wind size={8} /> {e.vitals.breathingRate}</span>
+                        <span className="text-[10px] font-mono font-bold text-[var(--danger)] flex items-center gap-1"><Heart size={8} /> {e.vitals.heartRate}</span>
+                        <span className="text-[9px] font-mono text-[var(--cyan)] flex items-center gap-1 mt-0.5"><Wind size={8} /> {e.vitals.breathingRate}</span>
                       </div>
                     </div>
                   ) : e.type === 'appliance' ? (

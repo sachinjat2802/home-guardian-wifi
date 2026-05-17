@@ -19,6 +19,97 @@
   --text-muted: #64748b;
   --cyan: #06b6d4;
   --purple: #a855f7;
+  --gradient-aurora: radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08), transparent 25%),
+                     radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.06), transparent 25%);
+}
+
+/* ─── Modern Theme Systems ───────────────────────────────────────────── */
+
+/* Deep Space (Obsidian Minimalist) */
+.theme-space {
+  --bg-primary: #020204;
+  --bg-secondary: #07070a;
+  --bg-card: rgba(255, 255, 255, 0.02);
+  --border-glass: rgba(255, 255, 255, 0.04);
+  --accent: #6366f1;
+  --accent-glow: rgba(99, 102, 241, 0.4);
+  --success: #059669;
+  --success-glow: rgba(5, 150, 105, 0.4);
+  --warning: #d97706;
+  --danger: #dc2626;
+  --danger-glow: rgba(220, 38, 38, 0.4);
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #475569;
+  --cyan: #38bdf8;
+  --purple: #c084fc;
+  --gradient-aurora: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.06), transparent 45%);
+}
+
+/* Neon Cyberpunk (Retrowave Edge) */
+.theme-cyberpunk {
+  --bg-primary: #05000d;
+  --bg-secondary: #0d001a;
+  --bg-card: rgba(236, 72, 153, 0.02);
+  --border-glass: rgba(236, 72, 153, 0.15);
+  --accent: #ec4899;
+  --accent-glow: rgba(236, 72, 153, 0.6);
+  --success: #06b6d4;
+  --success-glow: rgba(6, 182, 212, 0.6);
+  --warning: #fbbf24;
+  --danger: #f43f5e;
+  --danger-glow: rgba(244, 63, 94, 0.6);
+  --text-primary: #fdf2f8;
+  --text-secondary: #f472b6;
+  --text-muted: #8b5cf6;
+  --cyan: #06b6d4;
+  --purple: #d946ef;
+  --gradient-aurora: radial-gradient(circle at 15% 20%, rgba(236, 72, 153, 0.08), transparent 30%),
+                     radial-gradient(circle at 85% 80%, rgba(139, 92, 246, 0.08), transparent 30%);
+}
+
+/* Emerald Aurora (Boreal Night Glow) */
+.theme-aurora {
+  --bg-primary: #040907;
+  --bg-secondary: #08120e;
+  --bg-card: rgba(16, 185, 129, 0.02);
+  --border-glass: rgba(16, 185, 129, 0.12);
+  --accent: #10b981;
+  --accent-glow: rgba(16, 185, 129, 0.6);
+  --success: #34d399;
+  --success-glow: rgba(52, 211, 153, 0.6);
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --danger-glow: rgba(248, 113, 113, 0.6);
+  --text-primary: #ecfdf5;
+  --text-secondary: #a7f3d0;
+  --text-muted: #047857;
+  --cyan: #2dd4bf;
+  --purple: #818cf8;
+  --gradient-aurora: radial-gradient(circle at 30% 20%, rgba(16, 185, 129, 0.08), transparent 35%),
+                     radial-gradient(circle at 70% 80%, rgba(45, 212, 191, 0.06), transparent 35%);
+}
+
+/* Frosted Polar (Minimal Light Mode) */
+.theme-polar {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #f1f5f9;
+  --bg-card: rgba(255, 255, 255, 0.65);
+  --border-glass: rgba(15, 23, 42, 0.08);
+  --accent: #3b82f6;
+  --accent-glow: rgba(59, 130, 246, 0.25);
+  --success: #10b981;
+  --success-glow: rgba(16, 185, 129, 0.25);
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --danger-glow: rgba(239, 68, 68, 0.25);
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --cyan: #0284c7;
+  --purple: #7c3aed;
+  --gradient-aurora: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.06), transparent 30%),
+                     radial-gradient(circle at 90% 80%, rgba(124, 58, 237, 0.04), transparent 30%);
 }
 
 * {
@@ -32,10 +123,11 @@ body {
   background: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
-  background-image:
-    radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08), transparent 25%),
-    radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.06), transparent 25%);
+  background-image: var(--gradient-aurora);
   background-attachment: fixed;
+  transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Scrollbar */
