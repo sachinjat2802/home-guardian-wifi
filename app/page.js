@@ -124,7 +124,7 @@ export default function Home() {
 
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} connected={sensing.connected} mode={sensing.mode} />
       
-      <main className="flex-1 p-4 pl-2 overflow-y-auto flex flex-col gap-4">
+      <main className="flex-1 p-4 pl-2 pb-20 md:pb-4 overflow-y-auto flex flex-col gap-4">
         <Header 
           sensing={sensing} 
           soundEnabled={soundEnabled} 
@@ -167,18 +167,18 @@ export default function Home() {
 function Header({ sensing, soundEnabled, setSoundEnabled, theme, setTheme }) {
   const security = sensing.analysis?.security || {};
   return (
-    <header className="flex justify-between items-center bg-[var(--bg-card)] border border-[var(--border-glass)] px-4 py-3 rounded-2xl backdrop-blur-md transition-all duration-300">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-[var(--text-primary)] to-[var(--text-secondary)] bg-clip-text text-transparent">Home Guardian Spatial Analytics</h1>
+    <header className="flex flex-col md:flex-row justify-between items-stretch md:items-center bg-[var(--bg-card)] border border-[var(--border-glass)] p-4 md:px-4 md:py-3 rounded-2xl backdrop-blur-md transition-all duration-300 gap-3">
+      <div className="text-center md:text-left">
+        <h1 className="text-lg md:text-xl font-bold tracking-tight bg-gradient-to-r from-[var(--text-primary)] to-[var(--text-secondary)] bg-clip-text text-transparent">Home Guardian Spatial Analytics</h1>
         <p className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
           {sensing.connected ? `Live WiFi CSI sensing pipeline • Frame #${sensing.telemetry?.frame || 0}` : "Connecting to sensing server..."}
         </p>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-center md:justify-end gap-2.5">
         {/* Theme Switcher Selector */}
         <div className="flex items-center gap-1.5 border-r border-[var(--border-glass)] pr-3 mr-1">
           <Palette size={13} className="text-[var(--text-secondary)] animate-pulse" />
-          <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase">THEME:</span>
+          <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase hidden xs:inline">THEME:</span>
           <select
             value={theme}
             onChange={(e) => setTheme(e.target.value)}
@@ -209,7 +209,7 @@ function Header({ sensing, soundEnabled, setSoundEnabled, theme, setTheme }) {
 
         {sensing.connected ? (
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-mono text-[var(--text-muted)]">PIPELINE:</span>
+            <span className="text-[10px] font-mono text-[var(--text-muted)] hidden xs:inline">PIPELINE:</span>
             <select
               value={sensing.mode}
               onChange={(e) => sensing.changeMode(e.target.value)}

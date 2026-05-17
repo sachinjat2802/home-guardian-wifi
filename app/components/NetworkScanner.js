@@ -29,7 +29,8 @@ export default function NetworkScanner({ networks, requestScan, connectedNetwork
         </div>
       )}
       <div className="flex-1 overflow-y-auto">
-        <table className="w-full text-sm">
+        {/* Desktop Table View */}
+        <table className="hidden md:table w-full text-sm">
           <thead>
             <tr className="text-[var(--text-muted)] text-xs uppercase tracking-wider border-b border-[var(--border-glass)]">
               <th className="text-left py-2 px-3">Network</th>
@@ -46,7 +47,7 @@ export default function NetworkScanner({ networks, requestScan, connectedNetwork
                 <td className="py-2.5 px-3 flex items-center gap-2">
                   <SignalBars signal={net.signal} />
                   <span className={net.isConnected ? "text-emerald-400 font-medium" : ""}>{net.ssid}</span>
-                  {net.isConnected && <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full">Connected</span>}
+                  {net.isConnected && <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full font-bold">Connected</span>}
                 </td>
                 <td className="py-2.5 px-3 font-mono text-xs text-[var(--text-muted)]">{net.bssid}</td>
                 <td className="py-2.5 px-3 text-center font-mono">{net.channel}</td>
@@ -66,6 +67,42 @@ export default function NetworkScanner({ networks, requestScan, connectedNetwork
             ))}
           </tbody>
         </table>
+
+        {/* Mobile Responsive Cards View */}
+        <div className="flex flex-col gap-2.5 md:hidden">
+          {networks.map((net, i) => (
+            <div 
+              key={`${net.bssid}-${i}`} 
+              className={`p-3.5 rounded-xl border border-[var(--border-glass)] bg-black/20 flex items-center justify-between transition-all ${
+                net.isConnected ? "border-emerald-500/30 bg-emerald-500/[0.02]" : ""
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <SignalBars signal={net.signal} />
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-sm font-semibold ${net.isConnected ? "text-emerald-400" : "text-gray-200"}`}>{net.ssid}</span>
+                    {net.isConnected && <span className="text-[8px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Connected</span>}
+                  </div>
+                  <div className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5 flex flex-wrap gap-1.5">
+                    <span>Ch {net.channel}</span>
+                    <span>•</span>
+                    <span>{net.bssid}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="text-right flex flex-col items-end">
+                <span className="text-xs font-mono font-bold" style={{ color: net.signal > 70 ? "var(--success)" : net.signal > 40 ? "var(--warning)" : "var(--danger)" }}>
+                  {net.rssi} dBm
+                </span>
+                <span className="text-[9px] text-[var(--text-muted)] font-mono mt-0.5 flex items-center gap-1">
+                  <Lock size={9} /> {net.auth.split(" ")[0]}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
         {networks.length === 0 && (
           <p className="text-center text-[var(--text-muted)] py-12">Scanning for networks...</p>
         )}
