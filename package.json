@@ -6,7 +6,6 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "sensing": "node backend/server.cjs",
     "lint": "eslint"
   },
   "dependencies": {
