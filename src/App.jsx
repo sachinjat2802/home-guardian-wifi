@@ -85,6 +85,54 @@ function App() {
 
   const [activePerson, setActivePerson] = useState(null);
 
+  // Connect to Local WiFi RSSI WebSocket (Real hardware detection)
+  useEffect(() => {
+    let ws;
+    try {
+      ws = new WebSocket('ws://localhost:8080');
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'telemetry' && data.motion) {
+            setEvents(prev => [{ 
+              id: Date.now(), 
+              time: 'Just now', 
+              msg: `REAL WIFI MOTION: Signal dropped by ${Math.round(data.baseline - data.signal)}%`, 
+              type: 'alert' 
+            }, ...prev]);
+            
+            // Add a real physical target if it doesn't exist recently
+            setSubjects(prev => {
+              const hasRecent = prev.find(p => p.name === 'Real_WiFi_Target');
+              if (!hasRecent) {
+                return [...prev, {
+                  id: Date.now(),
+                  type: 'human',
+                  name: 'Real_WiFi_Target',
+                  age: 'Unknown',
+                  mac: 'Unknown',
+                  room: 'Radar Perimeter',
+                  x: 50, y: 90, targetX: 50, targetY: 50,
+                  status: 'Moving',
+                  heartRate: 90, breathingRate: 20, hrv: 30, temp: 37, stress: 'Unknown', spo2: 95, bp: 'N/A', posture: 'Unknown'
+                }];
+              }
+              return prev;
+            });
+            playAlertSound();
+          }
+        } catch (e) {
+          console.error('Error parsing WS data:', e);
+        }
+      };
+    } catch (e) {
+      console.log('No local WiFi sensor found, continuing in simulation mode.');
+    }
+    return () => {
+      if (ws) ws.close();
+    };
+  }, []);
+
   // Simulate real-time data fluctuations and movement with physics
   useEffect(() => {
     let frame = 0;
