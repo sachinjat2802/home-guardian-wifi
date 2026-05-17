@@ -1,5 +1,5 @@
 "use client";
-import { Radio, Home, Activity, Shield, Wifi, BarChart3, Brain, ShieldCheck, Layers } from "lucide-react";
+import { Radio, Home, Activity, Shield, Wifi, BarChart3, Brain, ShieldCheck, Layers, Users } from "lucide-react";
 
 const tabs = [
   { id: "dashboard", label: "Dashboard", icon: Home },
@@ -8,6 +8,7 @@ const tabs = [
   { id: "vitals", label: "Vitals", icon: Activity },
   { id: "networks", label: "Networks", icon: Wifi },
   { id: "snn", label: "SNN Engine", icon: Brain },
+  { id: "occupants", label: "Occupants Registry", icon: Users },
   { id: "security", label: "Security", icon: Shield },
 ];
 

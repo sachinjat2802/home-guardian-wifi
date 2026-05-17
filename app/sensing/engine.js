@@ -1,6 +1,7 @@
 import { exec } from "child_process";
 import { promisify } from "util";
 import { WebSocketServer, WebSocket } from "ws";
+import { saveTelemetry, saveEntities, saveEvent, getHistoricalTelemetry, getHistoricalEntities, getDB, getOccupants, updateOccupant } from "../../src/lib/db.js";
 
 const execPromise = promisify(exec);
 
@@ -69,7 +70,8 @@ export function startSensingServer() {
       publishAlerts: true,
       logs: []
     },
-    lastMqttPublishTime: 0
+    lastMqttPublishTime: 0,
+    occupantProfiles: []
   };
 
   // Initialize SNN
@@ -78,6 +80,15 @@ export function startSensingServer() {
   for (let i = 0; i < totalWeights; i++) {
     state.snnWeights[i] = 0.3 + (Math.random() - 0.5) * 0.1;
   }
+
+  const loadOccupantProfiles = async () => {
+    try {
+      state.occupantProfiles = await getOccupants();
+      console.log(`💾 [Sensing Engine] Loaded \${state.occupantProfiles.length} occupant profiles from SQLite DB`);
+    } catch (err) {
+      console.error("❌ [Sensing Engine] Failed to load occupants on start:", err);
+    }
+  };
 
   // ─── WebSocket Server ───────────────────────────────────────────────
   let wss = null;
@@ -393,10 +404,18 @@ export function startSensingServer() {
       const rawY = 50 + Math.sin(t * 0.02 * i + (i * Math.PI / 4)) * (15 + i * 4 + vitalsObj.motionEnergy * 8);
       const trilat = solveTrilateration(rawX, rawY);
 
+      // Map to SQLite occupant profiles dynamically
+      const dbOccupant = state.occupantProfiles && state.occupantProfiles[i - 1];
+      const occupantId = dbOccupant ? dbOccupant.id : `person-${i}`;
+      const occupantName = dbOccupant ? dbOccupant.name : (isIntruder ? `Intruder ${i === 7 ? '1' : i}` : `Person ${i}`);
+      const relationship = dbOccupant ? dbOccupant.relationship : (isIntruder ? 'Outsider' : 'Family');
+      const classification = dbOccupant ? `${dbOccupant.relationship} (${dbOccupant.notes})` : (isIntruder ? 'Hostile Intruder' : (i === 1 ? 'Adult Human (Self)' : (i % 2 === 0 ? 'Adult Female' : 'Adult Male')));
+
       entitiesList.push({
-        id: `person-${i}`,
-        name: isIntruder ? `Intruder ${i === 7 ? '1' : i}` : `Person ${i}`,
+        id: occupantId,
+        name: occupantName,
         type: 'person',
+        relationship: relationship,
         confidence: parseFloat((0.85 + Math.sin(t * 0.01 * i) * 0.1).toFixed(2)),
         vitals: {
           heartRate: Math.max(50, Math.min(140, hr + Math.round(vitalsObj.motionEnergy * 15))),
@@ -414,7 +433,7 @@ export function startSensingServer() {
           height: 160 + (i * 4) % 25,
           weight: 55 + (i * 6) % 35,
           gender: i % 2 === 0 ? 'Female' : 'Male',
-          classification: isIntruder ? 'Hostile Intruder' : (i === 1 ? 'Adult Human (Self)' : (i % 2 === 0 ? 'Adult Female' : 'Adult Male'))
+          classification: classification
         },
         status: status,
         x: trilat.x,
@@ -614,23 +633,37 @@ export function startSensingServer() {
 
     // Security Armed evaluation
     if (state.securityArmed) {
+      let triggeredNow = false;
+      let newReason = "";
       if (vitalsObj.fall) {
-        state.alarmTriggered = true;
-        state.alarmReason = "FALL DETECTED: Primary subject fall event recorded";
+        triggeredNow = true;
+        newReason = "FALL DETECTED: Primary subject fall event recorded";
       } else if (state.simulationPreset === 'security' && entitiesList.length > 0) {
-        state.alarmTriggered = true;
+        triggeredNow = true;
         const personIntruder = entitiesList.find(e => e.type === 'person');
         const anomalyIntruder = entitiesList.find(e => e.type === 'anomalous');
         if (personIntruder) {
-          state.alarmReason = "INTRUSION DETECTED: Hostile intruder moving in secure sector";
+          newReason = "INTRUSION DETECTED: Hostile intruder moving in secure sector";
         } else if (anomalyIntruder) {
-          state.alarmReason = "INTRUSION DETECTED: Anomalous interference signature detected in secure sector";
+          newReason = "INTRUSION DETECTED: Anomalous interference signature detected in secure sector";
         } else {
-          state.alarmReason = "INTRUSION DETECTED: Unknown motion detected in secure sector";
+          newReason = "INTRUSION DETECTED: Unknown motion detected in secure sector";
         }
       } else if (vitalsObj.motionEnergy > 0.6) {
+        triggeredNow = true;
+        newReason = "MOTION ALERT: Extreme spatial disruption under arm surveillance";
+      }
+
+      if (triggeredNow) {
+        if (!state.alarmTriggered || state.alarmReason !== newReason) {
+          saveEvent({
+            time: new Date().toLocaleTimeString(),
+            msg: newReason,
+            type: "alert"
+          });
+        }
         state.alarmTriggered = true;
-        state.alarmReason = "MOTION ALERT: Extreme spatial disruption under arm surveillance";
+        state.alarmReason = newReason;
       }
     }
 
@@ -674,6 +707,11 @@ export function startSensingServer() {
           motionDetected = true;
           state.totalMotionEvents++;
           motionSeverity = drop > 8 ? 'critical' : (drop > 5 ? 'high' : 'medium');
+          saveEvent({
+            time: new Date().toLocaleTimeString(),
+            msg: `MOTION DETECTED — Signal drop ${drop.toFixed(1)}% [${motionSeverity}]`,
+            type: "alert"
+          });
         }
       }
 
@@ -684,7 +722,7 @@ export function startSensingServer() {
       classifySubcarriers();
       extractVitals(signal, motionDetected, motionSeverity);
 
-      broadcast({
+      const telData = {
         type: 'telemetry',
         frame: state.frameCount,
         signal,
@@ -695,7 +733,10 @@ export function startSensingServer() {
         mode: state.systemMode,
         network: state.connectedNetwork,
         rssi: signalToRSSI(signal),
-      });
+      };
+      broadcast(telData);
+      saveTelemetry(telData);
+      saveEntities(state.entities);
 
       return;
     }
@@ -745,6 +786,11 @@ export function startSensingServer() {
           state.totalMotionEvents++;
           motionSeverity = drop > 8 ? 'critical' : (drop > 5 ? 'high' : 'medium');
           console.log(`🚨 [Sensing Engine] REAL MOTION DETECTED! Drop: ${drop.toFixed(1)}% (${motionSeverity})`);
+          saveEvent({
+            time: new Date().toLocaleTimeString(),
+            msg: `MOTION DETECTED — Signal drop ${drop.toFixed(1)}% [${motionSeverity}]`,
+            type: "alert"
+          });
         }
       }
 
@@ -755,7 +801,7 @@ export function startSensingServer() {
       classifySubcarriers();
       extractVitals(signal, motionDetected, motionSeverity);
 
-      broadcast({
+      const telData = {
         type: 'telemetry',
         frame: state.frameCount,
         signal,
@@ -766,7 +812,10 @@ export function startSensingServer() {
         mode: state.systemMode,
         network: state.connectedNetwork,
         rssi: signalToRSSI(signal),
-      });
+      };
+      broadcast(telData);
+      saveTelemetry(telData);
+      saveEntities(state.entities);
     });
   };
 
@@ -937,6 +986,7 @@ export function startSensingServer() {
   const analysisInterval = setInterval(broadcastAnalysis, ANALYSIS_INTERVAL_MS);
 
   // Initial runs
+  loadOccupantProfiles();
   getWiFiSignal();
   scanNetworks();
 
@@ -999,6 +1049,63 @@ export function startSensingServer() {
           } else if (cmd.type === 'mqtt_config') {
             state.mqtt = { ...state.mqtt, ...cmd.config };
             console.log("📡 [Sensing Engine] MQTT Configuration Updated");
+          } else if (cmd.type === 'get_history') {
+            (async () => {
+              try {
+                const db = await getDB();
+                const telemetry = await getHistoricalTelemetry(50);
+                const events = await db.all("SELECT * FROM events ORDER BY timestamp DESC LIMIT 50");
+                ws.send(JSON.stringify({
+                  type: 'history_data',
+                  telemetry,
+                  events
+                }));
+              } catch (err) {
+                console.error("❌ [Sensing Engine] Failed to fetch history over websocket:", err);
+              }
+            })();
+          } else if (cmd.type === 'get_occupants') {
+            (async () => {
+              try {
+                const occupants = await getOccupants();
+                ws.send(JSON.stringify({
+                  type: 'occupants_data',
+                  occupants
+                }));
+              } catch (err) {
+                console.error("❌ [Sensing Engine] Failed to fetch occupants over websocket:", err);
+              }
+            })();
+          } else if (cmd.type === 'update_occupant') {
+            (async () => {
+              try {
+                const success = await updateOccupant(
+                  cmd.id,
+                  cmd.name,
+                  cmd.relationship,
+                  cmd.contactInfo,
+                  cmd.gender,
+                  cmd.healthStatus,
+                  cmd.age,
+                  cmd.targetBpm,
+                  cmd.notes
+                );
+                if (success) {
+                  const occupants = await getOccupants();
+                  wss.clients.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                      client.send(JSON.stringify({
+                        type: 'occupants_data',
+                        occupants
+                      }));
+                    }
+                  });
+                  await loadOccupantProfiles();
+                }
+              } catch (err) {
+                console.error("❌ [Sensing Engine] Failed to update occupant over websocket:", err);
+              }
+            })();
           } else if (cmd.type === 'mqtt_test') {
             const timeStr = new Date().toTimeString().split(' ')[0];
             state.mqtt.logs.unshift({

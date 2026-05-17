@@ -11,6 +11,7 @@ import EventLog from "./components/EventLog";
 import SnnPanel from "./components/SnnPanel";
 import FloorplanView from "./components/FloorplanView";
 import PoseReconstructor from "./components/PoseReconstructor";
+import OccupantsRegistry from "./components/OccupantsRegistry";
 import { Shield, ShieldAlert, Play, Square, RefreshCw, Volume2, VolumeX, AlertOctagon, Palette } from "lucide-react";
 
 export default function Home() {
@@ -154,6 +155,7 @@ export default function Home() {
           />
         )}
         {activeTab === "snn" && <SnnPanel analysis={sensing.analysis} snnConfig={sensing.snnConfig} />}
+        {activeTab === "occupants" && <OccupantsRegistry sensing={sensing} />}
         {activeTab === "security" && <SecurityView sensing={sensing} soundEnabled={soundEnabled} setSoundEnabled={setSoundEnabled} />}
       </main>
     </div>

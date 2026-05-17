@@ -17,6 +17,7 @@ export function useWifiSensing() {
   const [connectedNetwork, setConnectedNetwork] = useState(null);
   const [events, setEvents] = useState([]);
   const [signalHistory, setSignalHistory] = useState([]);
+  const [occupants, setOccupants] = useState([]);
   
   const wsRef = useRef(null);
   const reconnectRef = useRef(null);
@@ -717,6 +718,10 @@ export function useWifiSensing() {
         setConnected(true);
         setMode("real");
         addEvent("Connected to WiFi Sensing Server", "system");
+        
+        // Request database history over WebSocket immediately
+        ws.send(JSON.stringify({ type: "get_history" }));
+        ws.send(JSON.stringify({ type: "get_occupants" }));
       };
 
       ws.onmessage = (event) => {
@@ -729,6 +734,28 @@ export function useWifiSensing() {
               setConnectedNetwork(data.network);
               if (data.networks) setNetworks(data.networks);
               addEvent(`Sensing mode: ${data.mode.toUpperCase()}`, "system");
+              break;
+            case "history_data":
+              if (data.events && data.events.length > 0) {
+                setEvents(data.events.map(item => ({
+                  id: item.id,
+                  time: item.time,
+                  msg: item.msg,
+                  type: item.type
+                })));
+              }
+              if (data.telemetry && data.telemetry.length > 0) {
+                setSignalHistory(data.telemetry.map(item => ({
+                  signal: item.signal,
+                  baseline: item.baseline,
+                  t: item.timestamp
+                })).reverse());
+              }
+              break;
+            case "occupants_data":
+              if (data.occupants) {
+                setOccupants(data.occupants);
+              }
               break;
             case "telemetry":
               setTelemetry(data);
@@ -912,6 +939,26 @@ export function useWifiSensing() {
     }
   }, [mode, addEvent, runLocalAnalysisIteration]);
 
+  const updateOccupantDetails = useCallback((id, name, relationship, contactInfo, gender, healthStatus, age, targetBpm, notes) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: "update_occupant",
+        id,
+        name,
+        relationship,
+        contactInfo,
+        gender,
+        healthStatus,
+        age: parseInt(age) || 0,
+        targetBpm: parseInt(targetBpm) || 80,
+        notes
+      }));
+      addEvent(`Dispatched update command for occupant: ${name}`, "system");
+    } else {
+      addEvent(`Cannot update occupant: Server disconnected`, "alert");
+    }
+  }, [addEvent]);
+
   return {
     connected,
     mode,
@@ -922,6 +969,7 @@ export function useWifiSensing() {
     connectedNetwork,
     events,
     signalHistory,
+    occupants,
     requestScan,
     armSecurity,
     disarmSecurity,
@@ -930,6 +978,7 @@ export function useWifiSensing() {
     changeMode,
     toggleMqtt,
     configureMqtt,
-    testMqtt
+    testMqtt,
+    updateOccupantDetails
   };
 }
