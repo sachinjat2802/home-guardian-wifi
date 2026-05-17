@@ -7,6 +7,73 @@ export default function PoseReconstructor({ entity, theme }) {
   const hypnogramRef = useRef(null);
   const [angle, setAngle] = useState(0);
 
+  // Interactive Orbit Controls (Yaw/Pitch Mouse/Touch drag)
+  const [isDragging, setIsDragging] = useState(false);
+  const [yaw, setYaw] = useState(0);
+  const [pitch, setPitch] = useState(-0.15);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const anglesRef = useRef({ yaw: 0, pitch: -0.15 });
+
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      dragStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  };
+
+  useEffect(() => {
+    const handleWindowMouseMove = (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - dragStartRef.current.x;
+      const dy = e.clientY - dragStartRef.current.y;
+      
+      anglesRef.current.yaw += dx * 0.007;
+      anglesRef.current.pitch = Math.max(-1.2, Math.min(1.2, anglesRef.current.pitch + dy * 0.007));
+      
+      setYaw(anglesRef.current.yaw);
+      setPitch(anglesRef.current.pitch);
+      
+      dragStartRef.current = { x: e.clientX, y: e.clientY };
+    };
+
+    const handleWindowTouchMove = (e) => {
+      if (!isDragging || e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - dragStartRef.current.x;
+      const dy = e.touches[0].clientY - dragStartRef.current.y;
+      
+      anglesRef.current.yaw += dx * 0.007;
+      anglesRef.current.pitch = Math.max(-1.2, Math.min(1.2, anglesRef.current.pitch + dy * 0.007));
+      
+      setYaw(anglesRef.current.yaw);
+      setPitch(anglesRef.current.pitch);
+      
+      dragStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    };
+
+    const handleWindowMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      window.addEventListener("mousemove", handleWindowMouseMove);
+      window.addEventListener("mouseup", handleWindowMouseUp);
+      window.addEventListener("touchmove", handleWindowTouchMove, { passive: true });
+      window.addEventListener("touchend", handleWindowMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleWindowMouseMove);
+      window.removeEventListener("mouseup", handleWindowMouseUp);
+      window.removeEventListener("touchmove", handleWindowTouchMove);
+      window.removeEventListener("touchend", handleWindowMouseUp);
+    };
+  }, [isDragging]);
+
   // Generate 3D point cloud points representing the entity
   const pointsRef = useRef([]);
   useEffect(() => {
@@ -128,7 +195,6 @@ export default function PoseReconstructor({ entity, theme }) {
     const purpleColor = bodyStyle.getPropertyValue("--purple").trim() || "#a855f7";
 
     let animId;
-    let localAngle = 0;
 
     const render = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -139,13 +205,18 @@ export default function PoseReconstructor({ entity, theme }) {
       const centerY = height / 2 + 10;
       const focalLength = 220;
 
-      localAngle += 0.015;
-      setAngle(localAngle);
+      // Rotate automatically if the user is not dragging
+      if (!isDragging) {
+        anglesRef.current.yaw += 0.008;
+      }
+      
+      const yawAngle = anglesRef.current.yaw;
+      const pitchAngle = anglesRef.current.pitch;
+      setAngle(yawAngle);
 
       // Micro-fluctuation triggers based on heart rate / breathing
       const br = entity.vitals.breathingRate || 15;
       const hr = entity.vitals.heartRate || 72;
-      const motion = entity.status === "active" ? 1 : 0.1;
       const t = Date.now() / 1000;
       
       // Breathing expansion factor
@@ -157,35 +228,73 @@ export default function PoseReconstructor({ entity, theme }) {
       const sweepPeriod = 4.0; // Seconds per sweep cycle
       const sweepY = Math.sin(t * (2 * Math.PI / sweepPeriod)) * 80;
 
-      // Rotate and Project 3D Points
-      const cosA = Math.cos(localAngle);
-      const sinA = Math.sin(localAngle);
-
       // ─── 3D Perspective Floor Grid ─────────────────────────────
       ctx.strokeStyle = parseAlpha(accentColor, 0.07);
       ctx.lineWidth = 0.5;
       
-      // Rotating Concentric Rings
+      const floorY = 75;
+      
+      // Concentric Floor Rings tilted by Pitch and Yaw
       for (let r = 25; r <= 100; r += 25) {
         ctx.beginPath();
-        ctx.ellipse(centerX, centerY + 70, r, r * 0.28, 0, 0, Math.PI * 2);
+        const segments = 32;
+        for (let i = 0; i <= segments; i++) {
+          const theta = (i / segments) * Math.PI * 2;
+          const gridX = Math.cos(theta) * r;
+          const gridZ = Math.sin(theta) * r;
+
+          const cosP = Math.cos(pitchAngle);
+          const sinP = Math.sin(pitchAngle);
+          const cosY = Math.cos(yawAngle);
+          const sinY = Math.sin(yawAngle);
+
+          // Pitch rotation (X-axis)
+          const y1 = floorY * cosP - gridZ * sinP;
+          const z1 = floorY * sinP + gridZ * cosP;
+
+          // Yaw rotation (Y-axis)
+          const rx = gridX * cosY - z1 * sinY;
+          const rz = gridX * sinY + z1 * cosY;
+
+          const scale = focalLength / (focalLength + rz);
+          const sx = centerX + rx * scale;
+          const sy = centerY + y1 * scale;
+
+          if (i === 0) ctx.moveTo(sx, sy);
+          else ctx.lineTo(sx, sy);
+        }
         ctx.stroke();
       }
 
-      // Spoke Radials slowly spinning
+      // Spoke Radials slowly spinning and tilting in 3D space
       const spokes = 8;
       for (let i = 0; i < spokes; i++) {
-        const rad = (i * Math.PI) / (spokes / 2) + localAngle * 0.15;
+        const rad = (i * Math.PI) / (spokes / 2) + yawAngle * 0.15;
         const gridX = Math.cos(rad) * 95;
         const gridZ = Math.sin(rad) * 95;
         
-        const rx = gridX * cosA - gridZ * sinA;
-        const rz = gridX * sinA + gridZ * cosA;
+        const cosP = Math.cos(pitchAngle);
+        const sinP = Math.sin(pitchAngle);
+        const cosY = Math.cos(yawAngle);
+        const sinY = Math.sin(yawAngle);
+
+        // Center point in 3D
+        const cy1 = floorY * cosP;
+        const cz1 = floorY * sinP;
+        const cx = -cz1 * sinY;
+        const cz = cz1 * cosY;
+        const cScale = focalLength / (focalLength + cz);
+
+        // Spoke end point in 3D
+        const y1 = floorY * cosP - gridZ * sinP;
+        const z1 = floorY * sinP + gridZ * cosP;
+        const rx = gridX * cosY - z1 * sinY;
+        const rz = gridX * sinY + z1 * cosY;
         const scale = focalLength / (focalLength + rz);
         
         ctx.beginPath();
-        ctx.moveTo(centerX, centerY + 70);
-        ctx.lineTo(centerX + rx * scale, centerY + 70 + (28 * scale));
+        ctx.moveTo(centerX + cx * cScale, centerY + cy1 * cScale);
+        ctx.lineTo(centerX + rx * scale, centerY + y1 * scale);
         ctx.stroke();
       }
       
@@ -222,14 +331,24 @@ export default function PoseReconstructor({ entity, theme }) {
           px = tempX;
         }
 
-        // Rotate point around Y axis
-        const rx = px * cosA - pz * sinA;
-        const rz = px * sinA + pz * cosA;
+        // Full 3D Pitch and Yaw Rotation
+        const cosP = Math.cos(pitchAngle);
+        const sinP = Math.sin(pitchAngle);
+        const cosY = Math.cos(yawAngle);
+        const sinY = Math.sin(yawAngle);
+
+        // Pitch rotation (X-axis)
+        const y1 = py * cosP - pz * sinP;
+        const z1 = py * sinP + pz * cosP;
+
+        // Yaw rotation (Y-axis)
+        const rx = px * cosY - z1 * sinY;
+        const rz = px * sinY + z1 * cosY;
         
         // Perspective projection
         const scale = focalLength / (focalLength + rz);
         const sx = centerX + rx * scale;
-        const sy = centerY + py * scale;
+        const sy = centerY + y1 * scale;
 
         // Check if slice plane is intersecting this point's vertical coordinate
         const isSwept = entity.type === "person" && Math.abs(py - sweepY) < 5;
@@ -242,7 +361,7 @@ export default function PoseReconstructor({ entity, theme }) {
 
       // Draw points
       projected.forEach((p) => {
-        let size = Math.max(1, 2.5 * (focalLength / (focalLength + p.depth)));
+        let size = Math.max(0.8, 2.2 * (focalLength / (focalLength + p.depth)));
         let alpha = 0.35 + (0.55 * (focalLength / (focalLength + p.depth)));
         
         if (p.isSwept) {
@@ -272,19 +391,46 @@ export default function PoseReconstructor({ entity, theme }) {
 
       // ─── Draw the Horizontal Sweep Plane Disk ──────────────────────
       if (entity.type === "person") {
-        const sweepScale = focalLength / (focalLength);
-        const sweepCenterY = centerY + sweepY * sweepScale;
         ctx.strokeStyle = `rgba(34, 211, 238, ${0.12 + Math.abs(Math.sin(t * 2.5)) * 0.08})`;
         ctx.lineWidth = 0.75;
         ctx.fillStyle = `rgba(34, 211, 238, 0.02)`;
         ctx.beginPath();
-        ctx.ellipse(centerX, sweepCenterY, 35 * sweepScale, 10 * sweepScale, 0, 0, Math.PI * 2);
+
+        // Render 3D sweep plane as a circle tilted by the pitch angle
+        const segments = 32;
+        for (let i = 0; i <= segments; i++) {
+          const theta = (i / segments) * Math.PI * 2;
+          const gridX = Math.cos(theta) * 35;
+          const gridZ = Math.sin(theta) * 35;
+
+          const cosP = Math.cos(pitchAngle);
+          const sinP = Math.sin(pitchAngle);
+          const cosY = Math.cos(yawAngle);
+          const sinY = Math.sin(yawAngle);
+
+          // Pitch rotation (X-axis)
+          const y1 = sweepY * cosP - gridZ * sinP;
+          const z1 = sweepY * sinP + gridZ * cosP;
+
+          // Yaw rotation (Y-axis)
+          const rx = gridX * cosY - z1 * sinY;
+          const rz = gridX * sinY + z1 * cosY;
+
+          const scale = focalLength / (focalLength + rz);
+          const sx = centerX + rx * scale;
+          const sy = centerY + y1 * scale;
+
+          if (i === 0) ctx.moveTo(sx, sy);
+          else ctx.lineTo(sx, sy);
+        }
         ctx.fill();
         ctx.stroke();
 
+        const labelX = Math.cos(yawAngle) * 40;
+        const labelY = sweepY * Math.cos(pitchAngle);
         ctx.font = "6px monospace";
         ctx.fillStyle = "rgba(34, 211, 238, 0.55)";
-        ctx.fillText(`SCAN_PLANE: ${Math.round(sweepY + 80)}`, centerX + 40 * sweepScale, sweepCenterY + 2);
+        ctx.fillText(`SCAN_PLANE: ${Math.round(sweepY + 80)}`, centerX + labelX, centerY + labelY + 2);
       }
 
       // Draw Skeleton Wireframe (DensePose Fusion)
@@ -309,15 +455,26 @@ export default function PoseReconstructor({ entity, theme }) {
           rAnkle: { x: 12, y: 72 - Math.sin(t * 5 + 0.5) * (entity.status === "active" ? 8 : 0.2), z: -5 },
         };
 
-        // Project Joints
+        // Project Joints with Pitch and Yaw
         const projJoints = {};
         Object.entries(joints).forEach(([key, val]) => {
-          const rx = val.x * cosA - val.z * sinA;
-          const rz = val.x * sinA + val.z * cosA;
+          const cosP = Math.cos(pitchAngle);
+          const sinP = Math.sin(pitchAngle);
+          const cosY = Math.cos(yawAngle);
+          const sinY = Math.sin(yawAngle);
+
+          // Pitch rotation (X-axis)
+          const y1 = val.y * cosP - val.z * sinP;
+          const z1 = val.y * sinP + val.z * cosP;
+
+          // Yaw rotation (Y-axis)
+          const rx = val.x * cosY - z1 * sinY;
+          const rz = val.x * sinY + z1 * cosY;
+
           const scale = focalLength / (focalLength + rz);
           projJoints[key] = {
             x: centerX + rx * scale,
-            y: centerY + val.y * scale,
+            y: centerY + y1 * scale,
             depth: rz
           };
         });
@@ -419,12 +576,23 @@ export default function PoseReconstructor({ entity, theme }) {
         ];
 
         const projCorners = corners.map(c => {
-          const rx = c.x * cosA - c.z * sinA;
-          const rz = c.x * sinA + c.z * cosA;
+          const cosP = Math.cos(pitchAngle);
+          const sinP = Math.sin(pitchAngle);
+          const cosY = Math.cos(yawAngle);
+          const sinY = Math.sin(yawAngle);
+
+          // Pitch rotation (X-axis)
+          const y1 = c.y * cosP - c.z * sinP;
+          const z1 = c.y * sinP + c.z * cosP;
+
+          // Yaw rotation (Y-axis)
+          const rx = c.x * cosY - z1 * sinY;
+          const rz = c.x * sinY + z1 * cosY;
+
           const scale = focalLength / (focalLength + rz);
           return {
             x: centerX + rx * scale,
-            y: centerY + c.y * scale,
+            y: centerY + y1 * scale,
           };
         });
 
@@ -487,7 +655,7 @@ export default function PoseReconstructor({ entity, theme }) {
 
     render();
     return () => cancelAnimationFrame(animId);
-  }, [entity, theme]);
+  }, [entity, theme, isDragging]);
 
   // Hypnogram (Sleep Stage History) Rendering
   useEffect(() => {
@@ -588,21 +756,34 @@ export default function PoseReconstructor({ entity, theme }) {
 
         {/* 3D Canvas */}
         <div className="flex-1 flex items-center justify-center relative">
-          <canvas ref={canvasRef} width={280} height={240} className="max-w-full drop-shadow-[0_0_15px_var(--accent-glow)]" />
+          <canvas 
+            ref={canvasRef} 
+            width={280} 
+            height={240} 
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+            className="max-w-full drop-shadow-[0_0_15px_var(--accent-glow)] cursor-grab active:cursor-grabbing select-none" 
+          />
           
           {/* Hologram details overlay */}
-          <div className="absolute top-2 left-2 font-mono text-[9px] text-[var(--text-muted)] flex flex-col gap-0.5">
+          <div className="absolute top-2 left-2 font-mono text-[9px] text-[var(--text-muted)] flex flex-col gap-0.5 pointer-events-none">
             <span>GRID: LOCK_ON</span>
             <span>PRESENCE: TRUE</span>
             <span>MODEL: {entity.type.toUpperCase()}_3D_POINT_CLOUD</span>
             <span>SPIKES: {isSleeping ? "42" : "120"} Hz</span>
           </div>
 
-          <div className="absolute bottom-2 right-2 font-mono text-[9px] text-[var(--text-muted)] text-right flex flex-col gap-0.5">
-            <span>ROTATION: {Math.round((angle * 180) / Math.PI) % 360}°</span>
+          <div className="absolute bottom-2 right-2 font-mono text-[9px] text-[var(--text-muted)] text-right flex flex-col gap-0.5 pointer-events-none">
+            <span>YAW: {Math.round((yaw * 180) / Math.PI) % 360}°</span>
+            <span>PITCH: {Math.round((pitch * 180) / Math.PI)}°</span>
             <span>GAIT SPEED: {b.gaitSpeed ? `${b.gaitSpeed} m/s` : "0.00 m/s"}</span>
-            <span>DENSITY BDI: {b.bodyDensity ? `${b.bodyDensity} g/cm³` : "0.00"}</span>
           </div>
+
+          {isDragging && (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none bg-[var(--accent)]/15 border border-[var(--accent)]/30 backdrop-blur-md px-3 py-1.5 rounded-lg text-[9px] font-mono text-white animate-pulse tracking-widest uppercase shadow-[0_0_15px_rgba(6,182,212,0.25)]">
+              3D Orbit Mode Active
+            </div>
+          )}
         </div>
 
         {/* Dynamic target card */}
