@@ -93,10 +93,10 @@ export default function SpectrumView({ analysis, theme }) {
           <h3 className="text-lg font-semibold">CSI Spectrum Analyzer</h3>
           <p className="text-xs text-[var(--text-muted)]">Real-time subcarrier amplitude & phase from WiFi Channel State Information</p>
         </div>
-        <div className="flex gap-3 text-xs">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--accent)]" /> Dynamic (Person)</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-500" /> Static (Wall)</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--danger)]" /> Null (Metal)</span>
+        <div className="flex flex-wrap gap-2.5 text-xs md:justify-end">
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--accent)]" /> Dynamic</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-500" /> Static</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--danger)]" /> Null</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--purple)]" /> Phase</span>
         </div>
       </div>
@@ -104,11 +104,11 @@ export default function SpectrumView({ analysis, theme }) {
         <canvas ref={canvasRef} className="w-full h-full" style={{ display: "block" }} />
         <div className="scan-line-anim z-10" />
       </div>
-      <div className="grid grid-cols-4 gap-3 mt-4">
-        <MiniStat label="Dynamic Subcarriers" value={cls.dynamic || 0} color="var(--accent)" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+        <MiniStat label="Dynamic Subs" value={cls.dynamic || 0} color="var(--accent)" />
         <MiniStat label="Static (Walls)" value={cls.walls || 0} color="rgba(148,163,184,0.6)" />
         <MiniStat label="Strong Reflectors" value={cls.reflectors || 0} color="var(--warning)" />
-        <MiniStat label="Null Zones (Metal)" value={cls.nulls || 0} color="var(--danger)" />
+        <MiniStat label="Null Zones" value={cls.nulls || 0} color="var(--danger)" />
       </div>
     </div>
   );

@@ -280,17 +280,17 @@ function SecurityView({ sensing, soundEnabled, setSoundEnabled }) {
   
   return (
     <div className="glass p-5 rounded-2xl flex-1 flex flex-col gap-5 bg-white/[0.01]">
-      <div className="flex justify-between items-center border-b border-[var(--border-glass)] pb-3">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[var(--border-glass)] pb-3">
         <div>
           <h3 className="text-base font-semibold">Armed Perimeter Guard & Intrusion Radar</h3>
           <p className="text-[10px] text-[var(--text-muted)] font-mono">Real-time room perimeter surveillance via multi-path scattering analysis</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
           {/* Preset switch dropdown */}
           <select 
             value={security.preset || "residential"} 
             onChange={(e) => sensing.changePreset(e.target.value)}
-            className="bg-black/60 border border-[var(--border-glass)] px-3 py-1.5 rounded-lg text-xs font-mono text-cyan-400 focus:outline-none"
+            className="bg-black/60 border border-[var(--border-glass)] px-3 py-1.5 rounded-lg text-xs font-mono text-cyan-400 focus:outline-none min-h-[38px] cursor-pointer"
           >
             <option value="residential">Residential Home</option>
             <option value="livestock">Livestock Farm</option>
@@ -301,7 +301,7 @@ function SecurityView({ sensing, soundEnabled, setSoundEnabled }) {
           {/* Trigger manual alarm */}
           <button
             onClick={() => sensing.triggerAlarm("MANUAL EMERGENCY ACTION: Manual panel panic toggle activated")}
-            className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/25 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
+            className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/25 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 min-h-[38px]"
           >
             <AlertOctagon size={13} /> Trigger Panic
           </button>

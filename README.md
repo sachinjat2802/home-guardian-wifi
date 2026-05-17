@@ -1,43 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 📡 Home Guardian: WiFi Spatial Intelligence & Threat Analytics Console
 
-## Getting Started
+> Non-intrusive, privacy-preserving spatial intelligence, presence mapping, and biometric respiration profiling utilizing raw WiFi Channel State Information (CSI) scattering.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🌌 Overview
+
+**Home Guardian** is a state-of-the-art spatial analytics and security console. By analyzing the multipath scattering of ambient WiFi radio signals (Channel State Information), the platform senses human movement, monitors vital signs (heart rate and respiration), and maps indoor presence in real time—**without cameras, microphones, or wearable sensors**.
+
+The application runs a high-performance background UDP multi-path relay engine that seamlessly bridges physical ESP32-CSI sensing hardware to a luxury, glassmorphic Next.js App Router front end.
+
+---
+
+## 🚀 Key Features
+
+* **📱 Mobile-First responsive interface**: Swaps persistent navigation columns for a thumb-zone-optimized bottom tab bar (Fitts' Law compliant target sizes `min-h-[44px]`) and converts wide tables into compact, touch-friendly network cards.
+* **🎭 5 Glassmorphic Dark Themes**: Cyber Classic, Deep Obsidian, Boreal Aurora, Neon Retro, and Frosted Polar.
+* **🩺 Theme-Responsive Canvas Rendering**: 2D coordinate radars, 3D hologram joint wireframes, and FFT spectrum lines repainter loops query CSS variables directly from `globals.css` in real time.
+* **👤 3D Point-Cloud Pose Reconstructor**: Procedural projection of human limbs, torso, and head coordinate blips based on Doppler stride length.
+* **📡 Real-Time Polar Sweep Radar**: Maps target coordinates ($x, y$), signal strengths, and proximity bounding alerts.
+* **📈 FFT Doppler Subcarrier Spectrum**: Subcarrier classification index mapping static walls, reflectors, dynamic movement, and signal nulls.
+* **🚨 Armed Perimeter Guard & Siren**: Proximity intruder alerts, multi-zone security presets (Residential, High-Security, Farm), and audible panic alarm siren.
+* **⚡ Server Instrumentation**: Starts the UDP-telemetry engine automatically on application startup utilizing Next.js's native [instrumentation.js](file:///d:/wifi-guardian/instrumentation.js) framework.
+
+---
+
+## 🛠️ System Architecture
+
+```mermaid
+flowchart TD
+  Hardware[Physical ESP32-CSI Boards] -->|UDP Multicast Port 8080| ServerEngine[Server Sensing Engine: engine.js]
+  ServerEngine -->|WebSocket Relay ws://localhost:8080| ClientHook[Sensing React Hook: useWifiSensing.js]
+  ClientHook -->|Live State Subscriptions| DashboardView[Spatial Radar / 3D Projections / Alert Log]
+  
+  subgraph Next.js Server Pipeline
+    instrumentation[instrumentation.js] -->|Auto-Start| ServerEngine
+  end
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## 📦 Directory Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+* **[app/components/](file:///d:/wifi-guardian/app/components)**: Core interface widgets (Radars, Pose wireframes, FFT views, network scanners).
+* **[app/hooks/useWifiSensing.js](file:///d:/wifi-guardian/app/hooks/useWifiSensing.js)**: Unified frontend state machine subscribing to the WebSocket telemetry relay.
+* **[app/sensing/engine.js](file:///d:/wifi-guardian/app/sensing/engine.js)**: Next.js background telemetry server acting as a mock provider when hardware is disconnected and a live UDP receiver when physical ESP32 boards are active.
+* **[instrumentation.js](file:///d:/wifi-guardian/instrumentation.js)**: Registers and spins up the background telemetry server automatically upon `npm run dev`.
+* **[MOBILE_RESPONSIVE_SPEC.md](file:///d:/wifi-guardian/MOBILE_RESPONSIVE_SPEC.md)**: Full mobile viewport breakpoints, touch zone scales, and viewport layout constraints.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🚦 Getting Started
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 1. Install Dependencies
+Ensure you have Node.js 18+ installed. Run:
+```bash
+npm install
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 2. Launch Development Console
+Run the Next.js development server:
+```bash
+npm run dev
+```
 
-## Deploy on Vercel
+Open **[http://localhost:3000](http://localhost:3000)** in your web browser. 
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme).
+> [!NOTE]
+> **Simulator Fallback Enabled:** If no physical ESP32 board is connected, the background sensing server automatically streams high-fidelity simulation coordinates, vital signs, sleep staging stages, and intruder alerts so you can test all interface views instantly.
 
-### Deployment on GitHub Pages
+### 3. Build & Package for Production
+Verify typescript types, bundle configurations, and compile:
+```bash
+npm run build
+```
 
-This project is configured for static deployment on GitHub Pages via GitHub Actions. 
-1. Ensure `output: 'export'` is set in `next.config.js`.
-2. Push changes to the `main` branch.
-3. Go to Repository **Settings** > **Pages** and ensure the Source is set to **GitHub Actions**.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🛰️ Physical Hardware Integration
+
+To stream live, physical radio scattering data from ESP32 development boards:
+1. Flash your ESP32 chips with the standard CSI-packet extraction firmware.
+2. Direct the raw UDP payload broadcast to port `8080` on your host PC's IP address.
+3. The background Next.js [engine.js](file:///d:/wifi-guardian/app/sensing/engine.js) will automatically terminate the simulation pipeline and lock onto the incoming physical CSI multi-path stream.

@@ -12,7 +12,7 @@ export default function SnnPanel({ analysis, snnConfig }) {
       <p className="text-xs text-[var(--text-muted)] mb-5">Real-time SNN inference on CSI subcarrier amplitude deltas with STDP online learning</p>
 
       {/* Network Info */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <InfoBox label="Architecture" value={snn.network || `${snnConfig?.input || 56}-${snnConfig?.hidden || 32}-${snnConfig?.output || 8}`} />
         <InfoBox label="Total Spikes" value={snn.spikes || 0} />
         <InfoBox label="Frame" value={analysis?.frame || 0} />
