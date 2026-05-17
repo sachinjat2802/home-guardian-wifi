@@ -1,4 +1,4 @@
-﻿.dashboard-container {
+.dashboard-container {
   display: flex;
   height: 100vh;
   width: 100vw;
@@ -628,5 +628,90 @@
   background-size: 20px 20px;
   z-index: 1;
   pointer-events: none;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 800px) {
+  .dashboard-container {
+    flex-direction: column;
+    height: 100dvh;
+  }
+  
+  .sidebar {
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
+    padding: 8px 10px;
+    flex-direction: row;
+    order: 2; /* Move to bottom */
+    border-top: 1px solid var(--glass-border);
+    background: #0b1120;
+    z-index: 100;
+  }
+  
+  .brand, .system-status { 
+    display: none; 
+  }
+  
+  .nav-links {
+    flex-direction: row;
+    justify-content: space-around;
+    width: 100%;
+  }
+  
+  .nav-links li {
+    flex-direction: column;
+    font-size: 0.75rem;
+    padding: 8px;
+    gap: 4px;
+    flex: 1;
+    justify-content: center;
+    border-radius: 8px;
+  }
+  
+  .main-content {
+    order: 1;
+    padding: 10px;
+    height: calc(100dvh - 70px);
+  }
+  
+  .top-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .main-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+    gap: 1rem;
+  }
+  
+  .radar-section {
+    min-height: 400px;
+  }
+  
+  .radar-map-container {
+    min-height: 350px;
+  }
+  
+  .radar-scanner {
+    width: 400px;
+    height: 400px;
+  }
+  
+  @keyframes radar-ripple {
+    0% { width: 0; height: 0; opacity: 1; border-width: 2px; }
+    100% { width: 400px; height: 400px; opacity: 0; border-width: 1px; }
+  }
+  
+  .vitals-dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
