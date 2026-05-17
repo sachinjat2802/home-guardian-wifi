@@ -311,7 +311,7 @@ function SecurityView({ sensing, soundEnabled, setSoundEnabled }) {
           <div>
             <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider block font-mono">Guard Arm State</span>
             <span className={`text-xl font-bold font-mono tracking-wide ${security.armed ? "text-cyan-400 animate-pulse" : "text-gray-500"}`}>
-              {security.armed ? "ARMCORD WATCH" : "DISARMED"}
+              {security.armed ? "ARMED WATCH" : "DISARMED"}
             </span>
           </div>
           <button 

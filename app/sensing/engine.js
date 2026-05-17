@@ -213,7 +213,8 @@ export function startSensingServer() {
       for (let i = 0; i < SNN_INPUT; i++) {
         sum += deltas[i] * state.snnWeights[i * SNN_HIDDEN + h];
       }
-      hidden[h] = sum > 0.5 ? 1.0 : sum > 0.2 ? sum : 0;
+      const normSum = sum / (SNN_INPUT * 0.15);
+      hidden[h] = normSum > 0.5 ? 1.0 : normSum > 0.2 ? normSum : 0;
     }
 
     const output = new Float64Array(SNN_OUTPUT);
@@ -223,7 +224,7 @@ export function startSensingServer() {
       for (let h = 0; h < SNN_HIDDEN; h++) {
         sum += hidden[h] * state.snnWeights[offset + h * SNN_OUTPUT + o];
       }
-      output[o] = Math.min(Math.max(sum, 0), 1);
+      output[o] = Math.min(Math.max(sum / (SNN_HIDDEN * 0.15), 0), 1);
     }
 
     const alpha = 0.3;
@@ -593,6 +594,13 @@ export function startSensingServer() {
     }
 
     vitalsObj.nPersons = entitiesList.filter(e => e.type === 'person').length;
+
+    // Presence stability score scaling
+    const activeEntities = entitiesList.filter(e => e.type !== 'appliance');
+    if (activeEntities.length > 0) {
+      vitalsObj.presence = true;
+      vitalsObj.presenceScore = parseFloat(Math.min(1.0, Math.max(0.85, ...activeEntities.map(e => e.confidence))).toFixed(3));
+    }
 
     // Fall detection
     if (state.signalHistory.length >= 3) {

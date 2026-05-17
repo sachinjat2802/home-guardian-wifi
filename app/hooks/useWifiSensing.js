@@ -123,7 +123,8 @@ export function useWifiSensing() {
       for (let i = 0; i < SNN_INPUT; i++) {
         sum += deltas[i] * engine.snnWeights[i * SNN_HIDDEN + h];
       }
-      hidden[h] = sum > 0.5 ? 1.0 : sum > 0.2 ? sum : 0;
+      const normSum = sum / (SNN_INPUT * 0.15);
+      hidden[h] = normSum > 0.5 ? 1.0 : normSum > 0.2 ? normSum : 0;
     }
 
     const output = new Float64Array(SNN_OUTPUT);
@@ -133,7 +134,7 @@ export function useWifiSensing() {
       for (let h = 0; h < SNN_HIDDEN; h++) {
         sum += hidden[h] * engine.snnWeights[offset + h * SNN_OUTPUT + o];
       }
-      output[o] = Math.min(Math.max(sum, 0), 1);
+      output[o] = Math.min(Math.max(sum / (SNN_HIDDEN * 0.15), 0), 1);
     }
 
     const alpha = 0.3;
@@ -451,6 +452,13 @@ export function useWifiSensing() {
 
     vitals.nPersons = entitiesList.filter(e => e.type === 'person').length;
 
+    // Presence stability score scaling
+    const activeEntities = entitiesList.filter(e => e.type !== 'appliance');
+    if (activeEntities.length > 0) {
+      vitals.presence = true;
+      vitals.presenceScore = parseFloat(Math.min(1.0, Math.max(0.85, ...activeEntities.map(e => e.confidence))).toFixed(3));
+    }
+
     // Fall detection logic
     if (engine.signalHistory.length >= 3) {
       const last3 = engine.signalHistory.slice(-3).map(h => h.signal);
@@ -736,7 +744,12 @@ export function useWifiSensing() {
               }
               break;
             case "analysis":
-              setAnalysis(data);
+              setAnalysis((prev) => {
+                if (data.security?.triggered && !prev?.security?.triggered) {
+                  addEvent(`🚨 PERIMETER BREACH ALARM: ${data.security.reason || "Unknown intrusion detected"}`, "alert");
+                }
+                return data;
+              });
               break;
             case "networks":
               setNetworks(data.networks || []);
@@ -800,64 +813,64 @@ export function useWifiSensing() {
   }, [mode, generateLocalNetworks, addEvent]);
 
   const armSecurity = useCallback(() => {
+    addEvent("🔒 Security System Armed", "system");
+    localEngineRef.current.securityArmed = true;
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "arm" }));
-      addEvent("Arm command sent to sensing server", "system");
-    } else if (mode === "local-simulation") {
-      localEngineRef.current.securityArmed = true;
-      addEvent("🔒 Local Security System Armed", "system");
+    }
+    if (mode === "local-simulation" || wsRef.current?.readyState !== WebSocket.OPEN) {
       runLocalAnalysisIteration(); // Trigger instant view refresh
     }
   }, [mode, addEvent, runLocalAnalysisIteration]);
 
   const disarmSecurity = useCallback(() => {
+    addEvent("🔓 Security System Disarmed", "system");
+    localEngineRef.current.securityArmed = false;
+    localEngineRef.current.alarmTriggered = false;
+    localEngineRef.current.alarmReason = "";
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "disarm" }));
-      addEvent("Disarm command sent to sensing server", "system");
-    } else if (mode === "local-simulation") {
-      localEngineRef.current.securityArmed = false;
-      localEngineRef.current.alarmTriggered = false;
-      localEngineRef.current.alarmReason = "";
-      addEvent("🔓 Local Security System Disarmed", "system");
+    }
+    if (mode === "local-simulation" || wsRef.current?.readyState !== WebSocket.OPEN) {
       runLocalAnalysisIteration(); // Trigger instant view refresh
     }
   }, [mode, addEvent, runLocalAnalysisIteration]);
 
   const triggerAlarm = useCallback((reason) => {
+    const msgReason = reason || "Manual Emergency Trigger";
+    addEvent(`🚨 Emergency Alarm Triggered: ${msgReason}`, "alert");
+    localEngineRef.current.alarmTriggered = true;
+    localEngineRef.current.alarmReason = msgReason;
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "trigger_alarm", reason: reason || "Manual Emergency Trigger" }));
-      addEvent(`Emergency alarm trigger: ${reason || "Manual Trigger"}`, "alert");
-    } else if (mode === "local-simulation") {
-      localEngineRef.current.alarmTriggered = true;
-      localEngineRef.current.alarmReason = reason || "Manual Emergency Trigger";
-      addEvent(`🚨 LOCAL ALARM TRIGGERED MANUALLY: ${localEngineRef.current.alarmReason}`, "alert");
+      wsRef.current.send(JSON.stringify({ type: "trigger_alarm", reason: msgReason }));
+    }
+    if (mode === "local-simulation" || wsRef.current?.readyState !== WebSocket.OPEN) {
       runLocalAnalysisIteration(); // Trigger instant view refresh
     }
   }, [mode, addEvent, runLocalAnalysisIteration]);
 
   const changePreset = useCallback((preset) => {
+    addEvent(`📡 Preset changed to: ${preset.toUpperCase()}`, "system");
+    localEngineRef.current.simulationPreset = preset;
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "preset", preset }));
-      addEvent(`Preset change: ${preset.toUpperCase()}`, "system");
-    } else if (mode === "local-simulation") {
-      localEngineRef.current.simulationPreset = preset;
-      addEvent(`📡 Local Preset changed to: ${preset.toUpperCase()}`, "system");
-      
-      // Regenerate immediately
-      const engine = localEngineRef.current;
-      extractLocalVitals(engine.lastSignal || 82, false, 'none');
+    }
+    
+    // Regenerate immediately
+    const engine = localEngineRef.current;
+    extractLocalVitals(engine.lastSignal || 82, false, 'none');
+    
+    if (mode === "local-simulation" || wsRef.current?.readyState !== WebSocket.OPEN) {
       runLocalAnalysisIteration(); // Trigger instant view refresh
     }
   }, [mode, addEvent, extractLocalVitals, runLocalAnalysisIteration]);
 
   const changeMode = useCallback((newMode) => {
+    addEvent(`Sensing mode toggle requested: ${newMode.toUpperCase()}`, "system");
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "mode", mode: newMode }));
-      addEvent(`Sensing mode toggle requested: ${newMode.toUpperCase()}`, "system");
-    } else if (mode === "local-simulation") {
-      addEvent(`Sensing mode toggle ignored: Running client-side offline fallback`, "system");
     }
-  }, [mode, addEvent]);
+  }, [addEvent]);
 
   const toggleMqtt = useCallback((connected) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
