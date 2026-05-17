@@ -485,7 +485,7 @@ export function useWifiSensing() {
 
     engine.vitals = vitals;
     engine.entities = entitiesList;
-  }, [addEvent]);
+  }, []);
 
   // ─── Local Polling Loops ────────────────────────────────────────────
   const runLocalSensingIteration = useCallback(() => {
@@ -696,7 +696,7 @@ export function useWifiSensing() {
   }, [initLocalSNN, generateLocalNetworks, runLocalSensingIteration, runLocalAnalysisIteration, addEvent]);
 
   // ─── WebSocket Client (Hardware Sensing) ──────────────────────────
-  const connect = useCallback(() => {
+  const connect = useCallback(function doConnect() {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
     try {
       const ws = new WebSocket("ws://localhost:8080");
@@ -755,7 +755,7 @@ export function useWifiSensing() {
         // Start client-side local sensing engine fallback!
         startLocalFallbackEngine();
         
-        reconnectRef.current = setTimeout(connect, 4000);
+        reconnectRef.current = setTimeout(doConnect, 4000);
       };
 
       ws.onerror = () => {
@@ -764,7 +764,7 @@ export function useWifiSensing() {
     } catch (e) {
       setMode("disconnected");
       startLocalFallbackEngine();
-      reconnectRef.current = setTimeout(connect, 4000);
+      reconnectRef.current = setTimeout(doConnect, 4000);
     }
   }, [addEvent, startLocalFallbackEngine]);
 

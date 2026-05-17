@@ -107,13 +107,7 @@ export default function Home() {
     };
   }, [isTriggered, soundEnabled]);
 
-  // Set default selected entity if none is selected
-  useEffect(() => {
-    const entities = sensing.analysis?.entities || [];
-    if (entities.length > 0 && !selectedEntityId) {
-      setSelectedEntityId(entities[0].id);
-    }
-  }, [sensing.analysis?.entities, selectedEntityId]);
+
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
@@ -240,7 +234,8 @@ function Header({ sensing, soundEnabled, setSoundEnabled, theme, setTheme }) {
 
 function DashboardView({ sensing, selectedEntityId, setSelectedEntityId, theme }) {
   const entities = sensing.analysis?.entities || [];
-  const selectedEntity = entities.find(e => e.id === selectedEntityId);
+  const selectedEntity = entities.find(e => e.id === selectedEntityId) || entities[0];
+  const effectiveSelectedEntityId = selectedEntity?.id || null;
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[2.5fr_1fr] gap-4 flex-1 min-h-0">
@@ -251,7 +246,7 @@ function DashboardView({ sensing, selectedEntityId, setSelectedEntityId, theme }
           <RadarMap 
             telemetry={sensing.telemetry} 
             analysis={sensing.analysis} 
-            selectedEntityId={selectedEntityId}
+            selectedEntityId={effectiveSelectedEntityId}
             onSelectEntity={setSelectedEntityId}
             theme={theme}
           />
@@ -430,18 +425,18 @@ function MqttIntegratorPanel({ sensing }) {
   const [publishOccupancy, setPublishOccupancy] = useState(mqtt.publishOccupancy);
   const [publishVitals, setPublishVitals] = useState(mqtt.publishVitals);
   const [publishAlerts, setPublishAlerts] = useState(mqtt.publishAlerts);
+  const [prevMqtt, setPrevMqtt] = useState(sensing.analysis?.mqtt);
 
   // Keep state variables synchronized when MQTT analysis updates
-  useEffect(() => {
-    if (sensing.analysis?.mqtt) {
-      const activeMqtt = sensing.analysis.mqtt;
-      setHost(activeMqtt.host || "mqtt://192.168.1.150:1883");
-      setTopic(activeMqtt.topic || "home/guardian");
-      setPublishOccupancy(activeMqtt.publishOccupancy !== false);
-      setPublishVitals(activeMqtt.publishVitals !== false);
-      setPublishAlerts(activeMqtt.publishAlerts !== false);
-    }
-  }, [sensing.analysis?.mqtt]);
+  if (sensing.analysis?.mqtt && sensing.analysis.mqtt !== prevMqtt) {
+    const activeMqtt = sensing.analysis.mqtt;
+    setPrevMqtt(activeMqtt);
+    setHost(activeMqtt.host || "mqtt://192.168.1.150:1883");
+    setTopic(activeMqtt.topic || "home/guardian");
+    setPublishOccupancy(activeMqtt.publishOccupancy !== false);
+    setPublishVitals(activeMqtt.publishVitals !== false);
+    setPublishAlerts(activeMqtt.publishAlerts !== false);
+  }
 
   const handleSave = () => {
     sensing.configureMqtt({
