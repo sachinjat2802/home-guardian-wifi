@@ -36,8 +36,24 @@ Drawing inspiration from cutting-edge research and concepts like RuView, this pr
 3. **Open the Dashboard:**
    Navigate to `http://localhost:5173` in your web browser.
 
-## 🗺️ Custom Map Upload
+## 🌐 Live Demo & Deployment (GitHub Pages)
 
+This project is pre-configured to automatically deploy to **GitHub Pages** via GitHub Actions.
+
+### How to Deploy
+1. Create a new repository on [GitHub](https://github.com/new).
+2. Upload this project code (via Drag & Drop or Git).
+3. In your GitHub repository, go to **Settings > Pages**.
+4. Under *Build and deployment*, change the **Source** dropdown to **GitHub Actions**.
+5. The automated deployment will begin.
+
+### How to Access the Live Site
+Once the GitHub Action completes successfully, your live dashboard will be accessible via standard GitHub Pages URL format:
+`https://<your-username>.github.io/<repository-name>/`
+
+*You can also find the exact clickable link inside your repository under **Settings > Pages**.*
+
+## 🗺️ Custom Map Upload
 The default map uses a high-tech satellite blueprint. If you wish to use a custom floor plan or a satellite view of your own property:
 1. Click the **Upload Real Map** button in the top right corner.
 2. Select an image file (`.png`, `.jpg`, etc.) from your computer.
