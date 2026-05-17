@@ -136,6 +136,80 @@ export default function RadarMap({ telemetry, analysis, selectedEntityId, onSele
             style={{ width: `${Math.min(90, telemetry.signal * 1.1)}%`, height: `${Math.min(90, telemetry.signal * 1.1)}%`, transition: "width 0.5s, height 0.5s" }} />
         )}
 
+        {/* ─── Volumetric ESP32 Receiver Antennas ───────────────────────── */}
+        {entities.some(e => e.trilat) && (
+          <>
+            {[
+              { id: "AP-1", x: 10, y: 10, label: "ESP32-A (Master)" },
+              { id: "AP-2", x: 90, y: 10, label: "ESP32-B (Node B)" },
+              { id: "AP-3", x: 50, y: 90, label: "ESP32-C (Node C)" }
+            ].map(ap => (
+              <div 
+                key={ap.id}
+                className="absolute z-10 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none select-none"
+                style={{ left: `${ap.x}%`, top: `${ap.y}%` }}
+              >
+                <div className="w-5 h-5 rounded-full bg-[var(--success)]/10 border border-[var(--success)]/40 flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.15)] animate-pulse">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[var(--success)] shadow-[0_0_6px_var(--success-glow)]" />
+                </div>
+                <span className="text-[7px] font-mono text-[var(--success)] opacity-70 mt-1 tracking-wider bg-[var(--bg-secondary)]/80 px-1 rounded border border-[var(--border-glass)]">{ap.id}</span>
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* ─── Triangulation Circle & Line Overlay for Selected Target ─── */}
+        {(() => {
+          const selectedEntity = entities.find(e => e.id === selectedEntityId);
+          if (!selectedEntity || !selectedEntity.trilat) return null;
+
+          return (
+            <>
+              {/* Ground-truth baseline target blip */}
+              <div 
+                className="absolute z-10 -translate-x-1/2 -translate-y-1/2 pointer-events-none border border-dashed border-red-500/40 rounded-full w-4 h-4 flex items-center justify-center"
+                style={{ left: `${selectedEntity.trilat.x_ground}%`, top: `${selectedEntity.trilat.y_ground}%`, transition: "left 1.2s cubic-bezier(0.25, 0.8, 0.25, 1), top 1.2s cubic-bezier(0.25, 0.8, 0.25, 1)" }}
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500/40" />
+                <span className="absolute -top-3 text-[6px] font-mono text-red-400 whitespace-nowrap opacity-65">Ground Truth</span>
+              </div>
+
+              {/* Dynamic triangulation vector lines */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
+                {selectedEntity.trilat.distances.map((dist) => (
+                  <line 
+                    key={`line-${dist.id}`}
+                    x1={`${dist.x}%`} 
+                    y1={`${dist.y}%`} 
+                    x2={`${selectedEntity.x}%`} 
+                    y2={`${selectedEntity.y}%`} 
+                    stroke="var(--accent)"
+                    strokeWidth="0.75"
+                    strokeDasharray="2 3"
+                    className="opacity-40 animate-pulse"
+                    style={{ transition: "all 1.2s cubic-bezier(0.25, 0.8, 0.25, 1)" }}
+                  />
+                ))}
+              </svg>
+
+              {/* Triangulation search circles */}
+              {selectedEntity.trilat.distances.map((dist) => (
+                <div 
+                  key={`circle-${dist.id}`}
+                  className="absolute z-[2] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[var(--accent)]/15 pointer-events-none"
+                  style={{
+                    left: `${dist.x}%`,
+                    top: `${dist.y}%`,
+                    width: `${dist.r * 2}%`,
+                    height: `${dist.r * 2}%`,
+                    transition: "width 0.5s, height 0.5s"
+                  }}
+                />
+              ))}
+            </>
+          );
+        })()}
+
         {/* Detected Targets */}
         {entities.map((e) => {
           const isSelected = e.id === selectedEntityId;

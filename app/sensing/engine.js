@@ -58,7 +58,18 @@ export function startSensingServer() {
     entities: [],
     detectedNetworks: [],
     connectedNetwork: null,
-    csiClassification: { nulls: 0, dynamic: 0, reflectors: 0, walls: 0 }
+    csiClassification: { nulls: 0, dynamic: 0, reflectors: 0, walls: 0 },
+    mqtt: {
+      connected: false,
+      host: "mqtt://192.168.1.150:1883",
+      topic: "home/guardian",
+      rateLimitMs: 1000,
+      publishOccupancy: true,
+      publishVitals: true,
+      publishAlerts: true,
+      logs: []
+    },
+    lastMqttPublishTime: 0
   };
 
   // Initialize SNN
@@ -89,6 +100,60 @@ export function startSensingServer() {
 
   // Helper converting Signal % to dBm RSSI
   const signalToRSSI = (pct) => Math.round(-100 + (pct / 100) * 60);
+
+  // ─── Volumetric 2D Trilateration Solver ─────────────────────────────
+  const solveTrilateration = (x, y) => {
+    // Virtual receiver antennas positioned around the scanning area boundary
+    const ap1 = { x: 10, y: 10 };
+    const ap2 = { x: 90, y: 10 };
+    const ap3 = { x: 50, y: 90 };
+
+    // Calculate true Euclidean distances
+    const d1_true = Math.sqrt((x - ap1.x) ** 2 + (y - ap1.y) ** 2);
+    const d2_true = Math.sqrt((x - ap2.x) ** 2 + (y - ap2.y) ** 2);
+    const d3_true = Math.sqrt((x - ap3.x) ** 2 + (y - ap3.y) ** 2);
+
+    // Add simulated multipath propagation delay / thermal noise
+    const noise = () => (Math.random() - 0.5) * 1.5;
+    const d1 = Math.max(1, d1_true + noise());
+    const d2 = Math.max(1, d2_true + noise());
+    const d3 = Math.max(1, d3_true + noise());
+
+    // Linear system construction:
+    // Equation 1: 2(x2 - x1)x + 2(y2 - y1)y = d1^2 - d2^2 - x1^2 + x2^2 - y1^2 + y2^2
+    const A = 2 * ap2.x - 2 * ap1.x;
+    const B = 2 * ap2.y - 2 * ap1.y;
+    const C = d1 ** 2 - d2 ** 2 - ap1.x ** 2 + ap2.x ** 2 - ap1.y ** 2 + ap2.y ** 2;
+
+    // Equation 2: 2(x3 - x1)x + 2(y3 - y1)y = d1^2 - d3^2 - x1^2 + x3^2 - y1^2 + y3^2
+    const D = 2 * ap3.x - 2 * ap1.x;
+    const E = 2 * ap3.y - 2 * ap1.y;
+    const F = d1 ** 2 - d3 ** 2 - ap1.x ** 2 + ap3.x ** 2 - ap1.y ** 2 + ap3.y ** 2;
+
+    // Solve using Cramer's Rule
+    const det = A * E - B * D;
+    let x_solved = x;
+    let y_solved = y;
+
+    if (Math.abs(det) > 0.001) {
+      x_solved = (C * E - B * F) / det;
+      y_solved = (A * F - C * D) / det;
+    }
+
+    // Bind inside scanner coordinate boundaries [5%, 95%]
+    x_solved = Math.max(5, Math.min(95, x_solved));
+    y_solved = Math.max(5, Math.min(95, y_solved));
+
+    return {
+      x: parseFloat(x_solved.toFixed(2)),
+      y: parseFloat(y_solved.toFixed(2)),
+      distances: [
+        { id: "AP-1", r: parseFloat(d1.toFixed(1)), x: ap1.x, y: ap1.y },
+        { id: "AP-2", r: parseFloat(d2.toFixed(1)), x: ap2.x, y: ap2.y },
+        { id: "AP-3", r: parseFloat(d3.toFixed(1)), x: ap3.x, y: ap3.y }
+      ]
+    };
+  };
 
   // ─── Mathematical Modules (CSI & SNN) ──────────────────────────────
   const generateSubcarriers = (signal, channel) => {
@@ -307,6 +372,10 @@ export function startSensingServer() {
         else { sleepStage = 'rem'; br = 17; hr = 71; }
       }
 
+      const rawX = 50 + Math.cos(t * 0.02 * i + (i * Math.PI / 4)) * (20 + i * 5 + vitalsObj.motionEnergy * 10);
+      const rawY = 50 + Math.sin(t * 0.02 * i + (i * Math.PI / 4)) * (15 + i * 4 + vitalsObj.motionEnergy * 8);
+      const trilat = solveTrilateration(rawX, rawY);
+
       entitiesList.push({
         id: `person-${i}`,
         name: isIntruder ? `Intruder ${i === 7 ? '1' : i}` : `Person ${i}`,
@@ -331,13 +400,22 @@ export function startSensingServer() {
           classification: isIntruder ? 'Hostile Intruder' : (i === 1 ? 'Adult Human (Self)' : (i % 2 === 0 ? 'Adult Female' : 'Adult Male'))
         },
         status: status,
-        x: 50 + Math.sin(t * 0.02 * i + (i * Math.PI / 4)) * (15 + i * 3.5 + vitalsObj.motionEnergy * 10),
-        y: 50 + Math.cos(t * 0.02 * i + (i * Math.PI / 4)) * (12 + i * 2.5 + vitalsObj.motionEnergy * 8),
+        x: trilat.x,
+        y: trilat.y,
+        trilat: {
+          x_ground: parseFloat(rawX.toFixed(2)),
+          y_ground: parseFloat(rawY.toFixed(2)),
+          distances: trilat.distances
+        }
       });
     }
 
     // Cows
     for (let i = 1; i <= numCows; i++) {
+      const rawX = 50 + Math.cos(t * 0.012 * i + (i * Math.PI / 3)) * (22 + i * 4 + vitalsObj.motionEnergy * 5);
+      const rawY = 50 + Math.sin(t * 0.012 * i + (i * Math.PI / 3)) * (18 + i * 3 + vitalsObj.motionEnergy * 4);
+      const trilat = solveTrilateration(rawX, rawY);
+
       entitiesList.push({
         id: `cow-${i}`,
         name: `Cow ${i}`,
@@ -361,13 +439,22 @@ export function startSensingServer() {
           classification: 'Bovine Livestock'
         },
         status: 'grazing',
-        x: 50 + Math.cos(t * 0.012 * i + (i * Math.PI / 3)) * (22 + i * 4 + vitalsObj.motionEnergy * 5),
-        y: 50 + Math.sin(t * 0.012 * i + (i * Math.PI / 3)) * (18 + i * 3 + vitalsObj.motionEnergy * 4),
+        x: trilat.x,
+        y: trilat.y,
+        trilat: {
+          x_ground: parseFloat(rawX.toFixed(2)),
+          y_ground: parseFloat(rawY.toFixed(2)),
+          distances: trilat.distances
+        }
       });
     }
 
     // Buffaloes
     for (let i = 1; i <= numBuffaloes; i++) {
+      const rawX = 50 + Math.sin(t * 0.01 * i + (i * Math.PI / 2.5)) * (25 + i * 3.5);
+      const rawY = 50 + Math.cos(t * 0.01 * i + (i * Math.PI / 2.5)) * (20 + i * 3.0);
+      const trilat = solveTrilateration(rawX, rawY);
+
       entitiesList.push({
         id: `buffalo-${i}`,
         name: `Buffalo ${i}`,
@@ -391,14 +478,23 @@ export function startSensingServer() {
           classification: 'Bubaline Livestock'
         },
         status: 'resting',
-        x: 50 + Math.sin(t * 0.01 * i + (i * Math.PI / 2.5)) * (25 + i * 3.5),
-        y: 50 + Math.cos(t * 0.01 * i + (i * Math.PI / 2.5)) * (20 + i * 3.0),
+        x: trilat.x,
+        y: trilat.y,
+        trilat: {
+          x_ground: parseFloat(rawX.toFixed(2)),
+          y_ground: parseFloat(rawY.toFixed(2)),
+          distances: trilat.distances
+        }
       });
     }
 
     // Pets
     for (let i = 1; i <= numPets; i++) {
       const isDog = i % 2 === 1;
+      const rawX = 50 + Math.sin(t * 0.04 * i + Math.PI) * (18 + i * 3 + vitalsObj.motionEnergy * 8);
+      const rawY = 50 + Math.cos(t * 0.04 * i + Math.PI) * (14 + i * 2 + vitalsObj.motionEnergy * 6);
+      const trilat = solveTrilateration(rawX, rawY);
+
       entitiesList.push({
         id: `pet-${i}`,
         name: isDog ? `Pet (Dog ${i === 1 ? '' : Math.ceil(i/2)})` : `Pet (Cat ${Math.ceil(i/2)})`,
@@ -422,13 +518,22 @@ export function startSensingServer() {
           classification: isDog ? 'Canine Pet' : 'Feline Pet'
         },
         status: vitalsObj.motionEnergy > 0.4 ? 'active' : 'resting',
-        x: 50 + Math.sin(t * 0.04 * i + Math.PI) * (18 + i * 3 + vitalsObj.motionEnergy * 8),
-        y: 50 + Math.cos(t * 0.04 * i + Math.PI) * (14 + i * 2 + vitalsObj.motionEnergy * 6),
+        x: trilat.x,
+        y: trilat.y,
+        trilat: {
+          x_ground: parseFloat(rawX.toFixed(2)),
+          y_ground: parseFloat(rawY.toFixed(2)),
+          distances: trilat.distances
+        }
       });
     }
 
     // Ghosts
     for (let i = 1; i <= numGhosts; i++) {
+      const rawX = 50 + Math.sin(t * 0.1 * i) * (28 + vitalsObj.motionEnergy * 10);
+      const rawY = 50 + Math.cos(t * 0.1 * i) * (22 + vitalsObj.motionEnergy * 8);
+      const trilat = solveTrilateration(rawX, rawY);
+
       entitiesList.push({
         id: `ghost-${i}`,
         name: i % 2 === 0 ? `Ghost Echo` : `Anomalous Echo`,
@@ -437,13 +542,22 @@ export function startSensingServer() {
         vitals: { heartRate: 0, breathingRate: 0, hrv: 0, temp: 0, spo2: 0 },
         biometrics: { age: 0, ageEst: 0, gaitSpeed: 3.5, bodyDensity: 0.08, classification: i % 2 === 0 ? 'Ghost Echo' : 'Multipath Anomaly' },
         status: 'active',
-        x: 50 + Math.sin(t * 0.1 * i) * (28 + vitalsObj.motionEnergy * 10),
-        y: 50 + Math.cos(t * 0.1 * i) * (22 + vitalsObj.motionEnergy * 8),
+        x: trilat.x,
+        y: trilat.y,
+        trilat: {
+          x_ground: parseFloat(rawX.toFixed(2)),
+          y_ground: parseFloat(rawY.toFixed(2)),
+          distances: trilat.distances
+        }
       });
     }
 
     // Appliances
     for (let i = 1; i <= numAppliances; i++) {
+      const rawX = 50;
+      const rawY = 50;
+      const trilat = solveTrilateration(rawX, rawY);
+
       entitiesList.push({
         id: `appliance-${i}`,
         name: `Ceiling Fan`,
@@ -452,8 +566,13 @@ export function startSensingServer() {
         vitals: { heartRate: 0, breathingRate: 60 },
         biometrics: { age: 0, ageEst: 0, gaitSpeed: 5.0, bodyDensity: 7.85, classification: 'Electronic Appliance' },
         status: 'active',
-        x: 50,
-        y: 50,
+        x: trilat.x,
+        y: trilat.y,
+        trilat: {
+          x_ground: rawX,
+          y_ground: rawY,
+          distances: trilat.distances
+        }
       });
     }
 
@@ -690,6 +809,62 @@ export function startSensingServer() {
   };
 
   const broadcastAnalysis = () => {
+    // ─── MQTT Live Publishing Loop ───
+    const now = Date.now();
+    if (state.mqtt && state.mqtt.connected && (now - state.lastMqttPublishTime >= state.mqtt.rateLimitMs)) {
+      state.lastMqttPublishTime = now;
+      const timeStr = new Date().toTimeString().split(' ')[0];
+
+      if (state.mqtt.publishOccupancy) {
+        state.mqtt.logs.unshift({
+          id: Math.random().toString(36).substr(2, 9),
+          time: timeStr,
+          topic: `${state.mqtt.topic}/occupancy`,
+          payload: JSON.stringify({
+            status: state.vitals.presence ? "occupied" : "vacant",
+            people_count: state.vitals.nPersons,
+            motion_energy: state.vitals.motionEnergy
+          })
+        });
+      }
+
+      if (state.mqtt.publishVitals && state.entities.length > 0) {
+        state.entities.forEach(ent => {
+          if (ent.type === 'person') {
+            state.mqtt.logs.unshift({
+              id: Math.random().toString(36).substr(2, 9),
+              time: timeStr,
+              topic: `${state.mqtt.topic}/entities/${ent.id}`,
+              payload: JSON.stringify({
+                id: ent.id,
+                name: ent.name,
+                heart_rate: ent.vitals.heartRate,
+                breathing_rate: ent.vitals.breathingRate,
+                temperature: ent.vitals.temp
+              })
+            });
+          }
+        });
+      }
+
+      if (state.mqtt.publishAlerts) {
+        state.mqtt.logs.unshift({
+          id: Math.random().toString(36).substr(2, 9),
+          time: timeStr,
+          topic: `${state.mqtt.topic}/security`,
+          payload: JSON.stringify({
+            armed: state.securityArmed,
+            triggered: state.alarmTriggered,
+            reason: state.alarmReason || "System Secure"
+          })
+        });
+      }
+
+      if (state.mqtt.logs.length > 30) {
+        state.mqtt.logs = state.mqtt.logs.slice(0, 30);
+      }
+    }
+
     const spectrumData = [];
     for (let i = 0; i < SNN_INPUT; i++) {
       spectrumData.push({
@@ -727,7 +902,8 @@ export function startSensingServer() {
         triggered: state.alarmTriggered,
         reason: state.alarmReason,
         preset: state.simulationPreset,
-      }
+      },
+      mqtt: { ...state.mqtt }
     });
   };
 
@@ -762,7 +938,8 @@ export function startSensingServer() {
           triggered: state.alarmTriggered,
           reason: state.alarmReason,
           preset: state.simulationPreset,
-        }
+        },
+        mqtt: { ...state.mqtt }
       }));
 
       ws.on("message", (msg) => {
@@ -792,6 +969,25 @@ export function startSensingServer() {
             state.systemMode = cmd.mode;
             console.log("🔄 [Sensing Engine] Mode toggled dynamically to:", state.systemMode);
             getWiFiSignal();
+          } else if (cmd.type === 'mqtt_toggle') {
+            state.mqtt.connected = cmd.connected;
+            console.log(`📡 [Sensing Engine] MQTT Gateway State Toggled: ${cmd.connected ? "CONNECTED" : "DISCONNECTED"}`);
+          } else if (cmd.type === 'mqtt_config') {
+            state.mqtt = { ...state.mqtt, ...cmd.config };
+            console.log("📡 [Sensing Engine] MQTT Configuration Updated");
+          } else if (cmd.type === 'mqtt_test') {
+            const timeStr = new Date().toTimeString().split(' ')[0];
+            state.mqtt.logs.unshift({
+              id: Math.random().toString(36).substr(2, 9),
+              time: timeStr,
+              topic: `${state.mqtt.topic}/test`,
+              payload: JSON.stringify({
+                event: "gateway_test",
+                message: "Home Guardian MQTT Broker Loopback Ping Successful",
+                timestamp: Date.now()
+              })
+            });
+            console.log("📡 [Sensing Engine] MQTT Live Test Broadcast Dispatched");
           }
         } catch (e) {
           // Ignore invalid frames

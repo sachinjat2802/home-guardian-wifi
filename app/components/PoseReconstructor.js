@@ -153,18 +153,41 @@ export default function PoseReconstructor({ entity, theme }) {
       // Heartbeat pulse factor
       const pulse = 1.0 + Math.sin(t * (hr / 60) * 2 * Math.PI) * 0.015;
 
-      // Draw Grid / Scanning Floor
-      ctx.strokeStyle = parseAlpha(accentColor, 0.1);
-      ctx.lineWidth = 1;
-      for (let r = 20; r <= 80; r += 20) {
-        ctx.beginPath();
-        ctx.ellipse(centerX, centerY + 65, r, r * 0.35, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      
+      // Oscillating Holographic Sweep Plane (sweeps head-to-toe in 3D space)
+      const sweepPeriod = 4.0; // Seconds per sweep cycle
+      const sweepY = Math.sin(t * (2 * Math.PI / sweepPeriod)) * 80;
+
       // Rotate and Project 3D Points
       const cosA = Math.cos(localAngle);
       const sinA = Math.sin(localAngle);
+
+      // ─── 3D Perspective Floor Grid ─────────────────────────────
+      ctx.strokeStyle = parseAlpha(accentColor, 0.07);
+      ctx.lineWidth = 0.5;
+      
+      // Rotating Concentric Rings
+      for (let r = 25; r <= 100; r += 25) {
+        ctx.beginPath();
+        ctx.ellipse(centerX, centerY + 70, r, r * 0.28, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Spoke Radials slowly spinning
+      const spokes = 8;
+      for (let i = 0; i < spokes; i++) {
+        const rad = (i * Math.PI) / (spokes / 2) + localAngle * 0.15;
+        const gridX = Math.cos(rad) * 95;
+        const gridZ = Math.sin(rad) * 95;
+        
+        const rx = gridX * cosA - gridZ * sinA;
+        const rz = gridX * sinA + gridZ * cosA;
+        const scale = focalLength / (focalLength + rz);
+        
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY + 70);
+        ctx.lineTo(centerX + rx * scale, centerY + 70 + (28 * scale));
+        ctx.stroke();
+      }
       
       // Sort points by depth (Z-buffer) for realistic rendering
       const projected = pointsRef.current.map((p) => {
@@ -208,7 +231,10 @@ export default function PoseReconstructor({ entity, theme }) {
         const sx = centerX + rx * scale;
         const sy = centerY + py * scale;
 
-        return { sx, sy, depth: rz, baseColor: p.baseColor };
+        // Check if slice plane is intersecting this point's vertical coordinate
+        const isSwept = entity.type === "person" && Math.abs(py - sweepY) < 5;
+
+        return { sx, sy, depth: rz, baseColor: p.baseColor, isSwept };
       });
 
       // Sort back-to-front
@@ -216,26 +242,50 @@ export default function PoseReconstructor({ entity, theme }) {
 
       // Draw points
       projected.forEach((p) => {
-        const size = Math.max(1, 2.5 * (focalLength / (focalLength + p.depth)));
-        const alpha = 0.35 + (0.55 * (focalLength / (focalLength + p.depth)));
+        let size = Math.max(1, 2.5 * (focalLength / (focalLength + p.depth)));
+        let alpha = 0.35 + (0.55 * (focalLength / (focalLength + p.depth)));
         
-        let glowColor = parseAlpha(accentColor, alpha); // Accent default
-        if (entity.type === "cow" || entity.type === "buffalo") {
-          glowColor = `rgba(16, 185, 129, ${alpha})`; // Green for livestock
+        if (p.isSwept) {
+          size *= 2.2;
+          alpha = 1.0;
+        }
+
+        let glowColor = parseAlpha(accentColor, alpha);
+        if (p.isSwept) {
+          glowColor = `rgba(34, 211, 238, ${alpha})`; // Glowing cyan laser sweep slice
+        } else if (entity.type === "cow" || entity.type === "buffalo") {
+          glowColor = `rgba(16, 185, 129, ${alpha})`;
         } else if (entity.status === "critical" || entity.type === "anomalous") {
-          glowColor = parseAlpha(dangerColor, alpha); // Warning red
+          glowColor = parseAlpha(dangerColor, alpha);
         } else if (entity.status === "sleeping") {
-          glowColor = parseAlpha(purpleColor, alpha); // Purple for sleep
+          glowColor = parseAlpha(purpleColor, alpha);
         }
 
         ctx.fillStyle = glowColor;
         ctx.shadowColor = glowColor;
-        ctx.shadowBlur = size * 1.5;
+        ctx.shadowBlur = p.isSwept ? size * 4 : size * 1.5;
         ctx.beginPath();
         ctx.arc(p.sx, p.sy, size, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0; // Reset
       });
+
+      // ─── Draw the Horizontal Sweep Plane Disk ──────────────────────
+      if (entity.type === "person") {
+        const sweepScale = focalLength / (focalLength);
+        const sweepCenterY = centerY + sweepY * sweepScale;
+        ctx.strokeStyle = `rgba(34, 211, 238, ${0.12 + Math.abs(Math.sin(t * 2.5)) * 0.08})`;
+        ctx.lineWidth = 0.75;
+        ctx.fillStyle = `rgba(34, 211, 238, 0.02)`;
+        ctx.beginPath();
+        ctx.ellipse(centerX, sweepCenterY, 35 * sweepScale, 10 * sweepScale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = "6px monospace";
+        ctx.fillStyle = "rgba(34, 211, 238, 0.55)";
+        ctx.fillText(`SCAN_PLANE: ${Math.round(sweepY + 80)}`, centerX + 40 * sweepScale, sweepCenterY + 2);
+      }
 
       // Draw Skeleton Wireframe (DensePose Fusion)
       if (entity.type === "person" && pointsRef.current.length > 0) {
@@ -288,7 +338,6 @@ export default function PoseReconstructor({ entity, theme }) {
           ["lHip", "lKnee"],
           ["rHip", "rKnee"],
           ["lKnee", "lAnkle"],
-          ["rHip", "rKnee"],
           ["rKnee", "rAnkle"],
         ];
 
@@ -310,6 +359,40 @@ export default function PoseReconstructor({ entity, theme }) {
           }
         });
 
+        // Draw Heart Rate Vitals Concentric Pulse Rings from chest node
+        const chestNode = projJoints["chest"];
+        if (chestNode && entity.vitals.heartRate > 0) {
+          const beatDuration = 60 / entity.vitals.heartRate;
+          const maxRadius = 32;
+          
+          // Ring 1
+          const cycleProgress = (t % beatDuration) / beatDuration;
+          const currentRadius = cycleProgress * maxRadius;
+          const ringAlpha = (1.0 - cycleProgress) * 0.45;
+          ctx.strokeStyle = entity.status === "critical"
+            ? `rgba(239, 68, 68, ${ringAlpha})`
+            : entity.status === "sleeping"
+            ? `rgba(168, 85, 247, ${ringAlpha})`
+            : `rgba(6, 182, 212, ${ringAlpha})`;
+          ctx.lineWidth = 0.75;
+          ctx.beginPath();
+          ctx.ellipse(chestNode.x, chestNode.y, currentRadius, currentRadius * 0.4, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Ring 2 (offset)
+          const cycleProgress2 = ((t + beatDuration / 2) % beatDuration) / beatDuration;
+          const currentRadius2 = cycleProgress2 * maxRadius;
+          const ringAlpha2 = (1.0 - cycleProgress2) * 0.45;
+          ctx.strokeStyle = entity.status === "critical"
+            ? `rgba(239, 68, 68, ${ringAlpha2})`
+            : entity.status === "sleeping"
+            ? `rgba(168, 85, 247, ${ringAlpha2})`
+            : `rgba(6, 182, 212, ${ringAlpha2})`;
+          ctx.beginPath();
+          ctx.ellipse(chestNode.x, chestNode.y, currentRadius2, currentRadius2 * 0.4, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
         // Draw joint nodes
         ctx.fillStyle = entity.status === "critical" ? dangerColor : entity.status === "sleeping" ? purpleColor : accentColor;
         Object.entries(projJoints).forEach(([name, joint]) => {
@@ -318,19 +401,85 @@ export default function PoseReconstructor({ entity, theme }) {
           ctx.arc(joint.x, joint.y, r, 0, Math.PI * 2);
           ctx.fill();
         });
+
+        // ─── 3D Fitted Bounding Box ────────────────────────────────────
+        const bW = 28 * chestExp; 
+        const bH = 80;          
+        const bD = 18 * chestExp; 
+
+        const corners = [
+          { x: -bW, y: -bH, z: -bD },
+          { x: bW, y: -bH, z: -bD },
+          { x: bW, y: -bH, z: bD },
+          { x: -bW, y: -bH, z: bD },
+          { x: -bW, y: bH, z: -bD },
+          { x: bW, y: bH, z: -bD },
+          { x: bW, y: bH, z: bD },
+          { x: -bW, y: bH, z: bD },
+        ];
+
+        const projCorners = corners.map(c => {
+          const rx = c.x * cosA - c.z * sinA;
+          const rz = c.x * sinA + c.z * cosA;
+          const scale = focalLength / (focalLength + rz);
+          return {
+            x: centerX + rx * scale,
+            y: centerY + c.y * scale,
+          };
+        });
+
+        const edges = [
+          [0, 1], [1, 2], [2, 3], [3, 0], // Top ring
+          [4, 5], [5, 6], [6, 7], [7, 4], // Bottom ring
+          [0, 4], [1, 5], [2, 6], [3, 7], // Verticals
+        ];
+
+        ctx.strokeStyle = parseAlpha(accentColor, 0.08);
+        ctx.lineWidth = 0.5;
+        edges.forEach(([from, to]) => {
+          ctx.beginPath();
+          ctx.moveTo(projCorners[from].x, projCorners[from].y);
+          ctx.lineTo(projCorners[to].x, projCorners[to].y);
+          ctx.stroke();
+        });
+
+        // Draw corner brackets
+        ctx.strokeStyle = entity.status === "critical"
+          ? parseAlpha(dangerColor, 0.45)
+          : entity.status === "sleeping"
+          ? parseAlpha(purpleColor, 0.45)
+          : parseAlpha(accentColor, 0.45);
+        ctx.lineWidth = 1;
+        projCorners.forEach((c) => {
+          const len = 5;
+          ctx.beginPath();
+          ctx.moveTo(c.x - len, c.y); ctx.lineTo(c.x + len, c.y);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(c.x, c.y - len); ctx.lineTo(c.x, c.y + len);
+          ctx.stroke();
+        });
+
+        const tagCorner = projCorners[0];
+        if (tagCorner) {
+          ctx.font = "6px monospace";
+          ctx.fillStyle = parseAlpha(accentColor, 0.6);
+          ctx.fillText(`VOLUME: ${(0.32 + Math.sin(t) * 0.005).toFixed(3)} m³`, tagCorner.x + 8, tagCorner.y - 12);
+          ctx.fillText(`FITTED_BOUNDS_LOCK`, tagCorner.x + 8, tagCorner.y - 4);
+        }
       }
 
-      // Live sweeping coordinate lock indicator
-      ctx.strokeStyle = parseAlpha(accentColor, 0.3);
+      // Live sweeping coordinate lock indicator (faded out to make room for floor grids)
+      ctx.strokeStyle = parseAlpha(accentColor, 0.15);
       ctx.lineWidth = 0.5;
       ctx.beginPath();
-      ctx.moveTo(centerX - 90, centerY + 65);
-      ctx.lineTo(centerX + 90, centerY + 65);
+      ctx.moveTo(centerX - 95, centerY + 70);
+      ctx.lineTo(centerX + 95, centerY + 70);
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.moveTo(centerX, centerY - 90);
-      ctx.lineTo(centerX, centerY + 85);
+      ctx.moveTo(centerX, centerY - 95);
+      ctx.lineTo(centerX, centerY + 90);
       ctx.stroke();
 
       animId = requestAnimationFrame(render);

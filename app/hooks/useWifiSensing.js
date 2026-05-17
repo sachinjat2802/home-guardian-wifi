@@ -540,6 +540,76 @@ export function useWifiSensing() {
   const runLocalAnalysisIteration = useCallback(() => {
     const engine = localEngineRef.current;
     
+    if (!engine.mqtt) {
+      engine.mqtt = {
+        connected: false,
+        host: "mqtt://192.168.1.150:1883",
+        topic: "home/guardian",
+        rateLimitMs: 1000,
+        publishOccupancy: true,
+        publishVitals: true,
+        publishAlerts: true,
+        logs: []
+      };
+    }
+
+    const now = Date.now();
+    if (!engine.lastMqttPublishTime) engine.lastMqttPublishTime = 0;
+    
+    if (engine.mqtt.connected && (now - engine.lastMqttPublishTime >= engine.mqtt.rateLimitMs)) {
+      engine.lastMqttPublishTime = now;
+      const timeStr = new Date().toLocaleTimeString();
+      
+      if (engine.mqtt.publishOccupancy) {
+        engine.mqtt.logs.unshift({
+          id: Math.random().toString(36).substr(2, 9),
+          time: timeStr,
+          topic: `${engine.mqtt.topic}/occupancy`,
+          payload: JSON.stringify({
+            status: engine.vitals.presence ? "occupied" : "vacant",
+            people_count: engine.vitals.nPersons,
+            motion_energy: engine.vitals.motionEnergy
+          })
+        });
+      }
+      
+      if (engine.mqtt.publishVitals && engine.entities.length > 0) {
+        engine.entities.forEach(ent => {
+          if (ent.type === 'person') {
+            engine.mqtt.logs.unshift({
+              id: Math.random().toString(36).substr(2, 9),
+              time: timeStr,
+              topic: `${engine.mqtt.topic}/entities/${ent.id}`,
+              payload: JSON.stringify({
+                id: ent.id,
+                name: ent.name,
+                heart_rate: ent.vitals.heartRate,
+                breathing_rate: ent.vitals.breathingRate,
+                temperature: ent.vitals.temp
+              })
+            });
+          }
+        });
+      }
+
+      if (engine.mqtt.publishAlerts) {
+        engine.mqtt.logs.unshift({
+          id: Math.random().toString(36).substr(2, 9),
+          time: timeStr,
+          topic: `${engine.mqtt.topic}/security`,
+          payload: JSON.stringify({
+            armed: engine.securityArmed,
+            triggered: engine.alarmTriggered,
+            reason: engine.alarmReason || "System Secure"
+          })
+        });
+      }
+
+      if (engine.mqtt.logs.length > 30) {
+        engine.mqtt.logs = engine.mqtt.logs.slice(0, 30);
+      }
+    }
+
     const spectrumData = [];
     for (let i = 0; i < SNN_INPUT; i++) {
       spectrumData.push({
@@ -577,7 +647,8 @@ export function useWifiSensing() {
         triggered: engine.alarmTriggered,
         reason: engine.alarmReason,
         preset: engine.simulationPreset,
-      }
+      },
+      mqtt: { ...engine.mqtt }
     });
   }, []);
 
@@ -772,6 +843,46 @@ export function useWifiSensing() {
     }
   }, [mode, addEvent]);
 
+  const toggleMqtt = useCallback((connected) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "mqtt_toggle", connected }));
+    } else if (mode === "local-simulation") {
+      localEngineRef.current.mqtt = localEngineRef.current.mqtt || { connected: false, host: "mqtt://192.168.1.150:1883", topic: "home/guardian", rateLimitMs: 1000, publishOccupancy: true, publishVitals: true, publishAlerts: true, logs: [] };
+      localEngineRef.current.mqtt.connected = connected;
+      addEvent(`Local MQTT gateway state: ${connected ? "CONNECTED" : "DISCONNECTED"}`, "system");
+      runLocalAnalysisIteration();
+    }
+  }, [mode, addEvent, runLocalAnalysisIteration]);
+
+  const configureMqtt = useCallback((config) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "mqtt_config", config }));
+    } else if (mode === "local-simulation") {
+      localEngineRef.current.mqtt = localEngineRef.current.mqtt || { connected: false, host: "mqtt://192.168.1.150:1883", topic: "home/guardian", rateLimitMs: 1000, publishOccupancy: true, publishVitals: true, publishAlerts: true, logs: [] };
+      localEngineRef.current.mqtt = { ...localEngineRef.current.mqtt, ...config };
+      addEvent(`Local MQTT configurations updated`, "system");
+      runLocalAnalysisIteration();
+    }
+  }, [mode, addEvent, runLocalAnalysisIteration]);
+
+  const testMqtt = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "mqtt_test" }));
+    } else if (mode === "local-simulation") {
+      localEngineRef.current.mqtt = localEngineRef.current.mqtt || { connected: false, host: "mqtt://192.168.1.150:1883", topic: "home/guardian", rateLimitMs: 1000, publishOccupancy: true, publishVitals: true, publishAlerts: true, logs: [] };
+      const timeStr = new Date().toLocaleTimeString();
+      localEngineRef.current.mqtt.logs = localEngineRef.current.mqtt.logs || [];
+      localEngineRef.current.mqtt.logs.unshift({
+        id: Math.random().toString(36).substr(2, 9),
+        time: timeStr,
+        topic: `${localEngineRef.current.mqtt.topic}/test`,
+        payload: JSON.stringify({ event: "gateway_test", message: "Local Mock Broker Loopback Ping Successful", timestamp: Date.now() })
+      });
+      addEvent(`Local MQTT test loopback ping sent`, "system");
+      runLocalAnalysisIteration();
+    }
+  }, [mode, addEvent, runLocalAnalysisIteration]);
+
   return {
     connected,
     mode,
@@ -788,5 +899,8 @@ export function useWifiSensing() {
     triggerAlarm,
     changePreset,
     changeMode,
+    toggleMqtt,
+    configureMqtt,
+    testMqtt
   };
 }

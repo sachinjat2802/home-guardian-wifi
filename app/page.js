@@ -9,6 +9,7 @@ import NetworkScanner from "./components/NetworkScanner";
 import VitalsPanel from "./components/VitalsPanel";
 import EventLog from "./components/EventLog";
 import SnnPanel from "./components/SnnPanel";
+import FloorplanView from "./components/FloorplanView";
 import PoseReconstructor from "./components/PoseReconstructor";
 import { Shield, ShieldAlert, Play, Square, RefreshCw, Volume2, VolumeX, AlertOctagon, Palette } from "lucide-react";
 
@@ -141,6 +142,7 @@ export default function Home() {
             theme={theme}
           />
         )}
+        {activeTab === "floorplan" && <FloorplanView analysis={sensing.analysis} />}
         {activeTab === "spectrum" && <SpectrumView analysis={sensing.analysis} />}
         {activeTab === "networks" && (
           <NetworkScanner 
@@ -378,24 +380,194 @@ function SecurityView({ sensing, soundEnabled, setSoundEnabled }) {
         </div>
       )}
 
-      <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider font-mono mt-1 border-b border-[var(--border-glass)] pb-2 flex items-center gap-1.5">
-        <Shield size={14} /> Room Threat & Alert Log
-      </h4>
-      <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1">
-        {sensing.events.filter(e => e.type === "alert").map(e => (
-          <div key={e.id} className="glass p-3 rounded-lg flex items-center justify-between border-l-2 border-red-500/60 bg-red-950/[0.04]">
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] font-mono text-cyan-400">{e.time}</span>
-              <span className="text-xs font-semibold text-gray-200">{e.msg}</span>
-            </div>
-            <span className="text-[9px] font-mono text-red-400/70 bg-red-500/5 px-2 py-0.5 rounded border border-red-500/10 uppercase font-bold">
-              Warning
-            </span>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-2">
+        {/* Left Column: Threat Log */}
+        <div className="flex flex-col gap-3">
+          <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider font-mono border-b border-[var(--border-glass)] pb-2 flex items-center gap-1.5">
+            <Shield size={14} /> Room Threat & Alert Log
+          </h4>
+          <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1 flex-1">
+            {sensing.events.filter(e => e.type === "alert").map(e => (
+              <div key={e.id} className="glass p-3 rounded-lg flex items-center justify-between border-l-2 border-red-500/60 bg-red-950/[0.04]">
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-mono text-cyan-400">{e.time}</span>
+                  <span className="text-xs font-semibold text-gray-200">{e.msg}</span>
+                </div>
+                <span className="text-[9px] font-mono text-red-400/70 bg-red-500/5 px-2 py-0.5 rounded border border-red-500/10 uppercase font-bold">
+                  Warning
+                </span>
+              </div>
+            ))}
+            {sensing.events.filter(e => e.type === "alert").length === 0 && (
+              <p className="text-[var(--text-muted)] text-xs text-center py-8">No armed intrusion alerts recorded in current session.</p>
+            )}
           </div>
-        ))}
-        {sensing.events.filter(e => e.type === "alert").length === 0 && (
-          <p className="text-[var(--text-muted)] text-xs text-center py-8">No armed intrusion alerts recorded in current session.</p>
-        )}
+        </div>
+
+        {/* Right Column: MQTT gateway */}
+        <div className="glass p-4 rounded-xl bg-black/25 border border-[var(--border-glass)] flex flex-col gap-3">
+          <MqttIntegratorPanel sensing={sensing} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MqttIntegratorPanel({ sensing }) {
+  const mqtt = sensing.analysis?.mqtt || {
+    connected: false,
+    host: "mqtt://192.168.1.150:1883",
+    topic: "home/guardian",
+    rateLimitMs: 1000,
+    publishOccupancy: true,
+    publishVitals: true,
+    publishAlerts: true,
+    logs: []
+  };
+
+  const [host, setHost] = useState(mqtt.host);
+  const [topic, setTopic] = useState(mqtt.topic);
+  const [publishOccupancy, setPublishOccupancy] = useState(mqtt.publishOccupancy);
+  const [publishVitals, setPublishVitals] = useState(mqtt.publishVitals);
+  const [publishAlerts, setPublishAlerts] = useState(mqtt.publishAlerts);
+
+  // Keep state variables synchronized when MQTT analysis updates
+  useEffect(() => {
+    if (sensing.analysis?.mqtt) {
+      const activeMqtt = sensing.analysis.mqtt;
+      setHost(activeMqtt.host || "mqtt://192.168.1.150:1883");
+      setTopic(activeMqtt.topic || "home/guardian");
+      setPublishOccupancy(activeMqtt.publishOccupancy !== false);
+      setPublishVitals(activeMqtt.publishVitals !== false);
+      setPublishAlerts(activeMqtt.publishAlerts !== false);
+    }
+  }, [sensing.analysis?.mqtt]);
+
+  const handleSave = () => {
+    sensing.configureMqtt({
+      host,
+      topic,
+      publishOccupancy,
+      publishVitals,
+      publishAlerts
+    });
+  };
+
+  return (
+    <div className="flex flex-col gap-3 h-full justify-between">
+      <div className="flex justify-between items-center border-b border-white/5 pb-2">
+        <div className="flex items-center gap-2">
+          <div className={`w-2.5 h-2.5 rounded-full ${mqtt.connected ? "bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" : "bg-gray-600"}`} />
+          <h4 className="text-xs font-semibold text-cyan-400 uppercase tracking-wider font-mono">MQTT Smart Home Gateway</h4>
+        </div>
+        <button
+          onClick={() => sensing.toggleMqtt(!mqtt.connected)}
+          className={`px-2.5 py-1 rounded text-[9px] font-bold font-mono transition-all border ${
+            mqtt.connected
+              ? "bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20"
+              : "bg-cyan-500/10 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20"
+          }`}
+        >
+          {mqtt.connected ? "DISCONNECT" : "CONNECT"}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+        <div className="flex flex-col gap-1">
+          <span className="text-[8px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">Broker Host</span>
+          <input
+            type="text"
+            value={host}
+            onChange={(e) => setHost(e.target.value)}
+            onBlur={handleSave}
+            placeholder="mqtt://localhost:1883"
+            className="bg-black/40 border border-white/10 px-2 py-1 rounded text-xs text-gray-200 focus:outline-none focus:border-cyan-500/50 font-mono"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-[8px] text-[var(--text-muted)] uppercase tracking-wider font-semibold">Topic Prefix</span>
+          <input
+            type="text"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            onBlur={handleSave}
+            placeholder="home/guardian"
+            className="bg-black/40 border border-white/10 px-2 py-1 rounded text-xs text-gray-200 focus:outline-none focus:border-cyan-500/50 font-mono"
+          />
+        </div>
+      </div>
+
+      {/* Stream filters */}
+      <div className="flex flex-wrap gap-2 py-0.5 justify-start">
+        <label className="flex items-center gap-1.5 text-[9px] font-mono text-gray-300 cursor-pointer bg-white/5 px-2 py-1 rounded hover:bg-white/10 transition-all select-none border border-white/5">
+          <input
+            type="checkbox"
+            checked={publishOccupancy}
+            onChange={(e) => {
+              const val = e.target.checked;
+              setPublishOccupancy(val);
+              sensing.configureMqtt({ publishOccupancy: val });
+            }}
+            className="accent-cyan-500"
+          />
+          Occupancy
+        </label>
+        <label className="flex items-center gap-1.5 text-[9px] font-mono text-gray-300 cursor-pointer bg-white/5 px-2 py-1 rounded hover:bg-white/10 transition-all select-none border border-white/5">
+          <input
+            type="checkbox"
+            checked={publishVitals}
+            onChange={(e) => {
+              const val = e.target.checked;
+              setPublishVitals(val);
+              sensing.configureMqtt({ publishVitals: val });
+            }}
+            className="accent-cyan-500"
+          />
+          Vitals
+        </label>
+        <label className="flex items-center gap-1.5 text-[9px] font-mono text-gray-300 cursor-pointer bg-white/5 px-2 py-1 rounded hover:bg-white/10 transition-all select-none border border-white/5">
+          <input
+            type="checkbox"
+            checked={publishAlerts}
+            onChange={(e) => {
+              const val = e.target.checked;
+              setPublishAlerts(val);
+              sensing.configureMqtt({ publishAlerts: val });
+            }}
+            className="accent-cyan-500"
+          />
+          Security
+        </label>
+      </div>
+
+      {/* Dispatch console logger */}
+      <div className="flex flex-col gap-1.5 flex-1 min-h-[140px]">
+        <div className="flex justify-between items-center text-[9px] text-[var(--text-muted)] font-mono font-semibold">
+          <span>OUTBOUND MQTT GATEWAY DISPATCH LOGS</span>
+          <button
+            onClick={() => sensing.testMqtt()}
+            className="text-cyan-400 hover:underline font-bold"
+          >
+            DISPATCH PING
+          </button>
+        </div>
+        <div className="bg-black/40 border border-white/5 rounded-lg p-2 font-mono text-[9px] overflow-y-auto flex flex-col gap-1 flex-1 text-gray-400 max-h-[140px]">
+          {mqtt.logs && mqtt.logs.length > 0 ? (
+            mqtt.logs.map(log => (
+              <div key={log.id} className="border-b border-white/5 pb-1 last:border-0">
+                <div className="flex justify-between text-cyan-400">
+                  <span>[{log.time}] PUBLISHED</span>
+                  <span className="text-[8px] text-[var(--text-muted)]">{log.topic}</span>
+                </div>
+                <div className="text-gray-300 break-all bg-black/40 p-1 rounded mt-0.5 border border-white/5">{log.payload}</div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-600">
+              {mqtt.connected ? "Awaiting outbound telemetry publish tick..." : "Gateway offline. Toggle connect state above to start."}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
