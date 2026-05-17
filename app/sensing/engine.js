@@ -360,7 +360,23 @@ export function startSensingServer() {
     // Persons
     for (let i = 1; i <= numPersons; i++) {
       const isIntruder = (state.simulationPreset === 'security' && i === numPersons) || (state.simulationPreset === 'everything' && i === 7);
-      const status = vitalsObj.motionEnergy > 0.4 ? 'active' : (vitalsObj.breathingRate < 12 && i === 1 ? 'sleeping' : 'resting');
+      
+      // Dynamic simulated state transitions over time (active, resting, sleeping)
+      let status = 'resting';
+      if (isIntruder) {
+        status = 'active';
+      } else {
+        const personPhase = (t * 0.04) + i * 1.5;
+        const wave = Math.sin(personPhase);
+        if (wave > 0.4) {
+          status = 'active';
+        } else if (wave < -0.4 && (i % 2 === 1)) {
+          status = 'sleeping';
+        } else {
+          status = 'resting';
+        }
+      }
+      
       let hr = vitalsObj.heartRate + (i - 1) * 2;
       let br = vitalsObj.breathingRate + (i % 2 === 0 ? 1 : -1) * (i % 3);
       let sleepStage = null;
@@ -517,7 +533,7 @@ export function startSensingServer() {
           gender: i % 2 === 0 ? 'Female' : 'Male',
           classification: isDog ? 'Canine Pet' : 'Feline Pet'
         },
-        status: vitalsObj.motionEnergy > 0.4 ? 'active' : 'resting',
+        status: (Math.sin((t * 0.05) + i * 2) > 0.3) ? 'active' : 'resting',
         x: trilat.x,
         y: trilat.y,
         trilat: {

@@ -272,7 +272,23 @@ export function useWifiSensing() {
     // 1. Generate Persons
     for (let i = 1; i <= numPersons; i++) {
       const isIntruder = (engine.simulationPreset === 'security' && i === numPersons) || (engine.simulationPreset === 'everything' && i === 7);
-      const status = vitals.motionEnergy > 0.4 ? 'active' : (vitals.breathingRate < 12 && i === 1 ? 'sleeping' : 'resting');
+      
+      // Dynamic simulated state transitions over time (active, resting, sleeping)
+      let status = 'resting';
+      if (isIntruder) {
+        status = 'active';
+      } else {
+        const personPhase = (t * 0.04) + i * 1.5;
+        const wave = Math.sin(personPhase);
+        if (wave > 0.4) {
+          status = 'active';
+        } else if (wave < -0.4 && (i % 2 === 1)) {
+          status = 'sleeping';
+        } else {
+          status = 'resting';
+        }
+      }
+      
       let hr = vitals.heartRate + (i - 1) * 2;
       let br = vitals.breathingRate + (i % 2 === 0 ? 1 : -1) * (i % 3);
       let sleepStage = null;
@@ -397,7 +413,7 @@ export function useWifiSensing() {
           gender: i % 2 === 0 ? 'Female' : 'Male',
           classification: isDog ? 'Canine Pet' : 'Feline Pet'
         },
-        status: vitals.motionEnergy > 0.4 ? 'active' : 'resting',
+        status: (Math.sin((t * 0.05) + i * 2) > 0.3) ? 'active' : 'resting',
         x: 50 + Math.sin(t * 0.04 * i + Math.PI) * (18 + i * 3 + vitals.motionEnergy * 8),
         y: 50 + Math.cos(t * 0.04 * i + Math.PI) * (14 + i * 2 + vitals.motionEnergy * 6),
       });

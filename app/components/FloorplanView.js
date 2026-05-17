@@ -8,10 +8,10 @@ export default function FloorplanView({ analysis }) {
   
   // Custom room layout boundaries (expressed in percentages of a 100x100 spatial grid)
   const [rooms, setRooms] = useState([
-    { id: "living", name: "Living Room", x: 0, y: 0, w: 50, h: 50, color: "rgba(34, 211, 238, 0.08)", borderColor: "#22d3ee" },
-    { id: "bedroom", name: "Master Bedroom", x: 50, y: 0, w: 50, h: 50, color: "rgba(59, 130, 246, 0.08)", borderColor: "#3b82f6" },
-    { id: "kitchen", name: "Kitchen & Dining", x: 0, y: 50, w: 40, h: 50, color: "rgba(16, 185, 129, 0.08)", borderColor: "#10b981" },
-    { id: "corridor", name: "Secure Corridor", x: 40, y: 50, w: 60, h: 50, color: "rgba(239, 68, 68, 0.08)", borderColor: "#ef4444" }
+    { id: "sector-alpha", name: "Multipath Grid Alpha", x: 0, y: 0, w: 50, h: 50, color: "rgba(34, 211, 238, 0.08)", borderColor: "#22d3ee" },
+    { id: "sector-beta", name: "Multipath Grid Beta", x: 50, y: 0, w: 50, h: 50, color: "rgba(59, 130, 246, 0.08)", borderColor: "#3b82f6" },
+    { id: "sector-gamma", name: "Multipath Grid Gamma", x: 0, y: 50, w: 40, h: 50, color: "rgba(16, 185, 129, 0.08)", borderColor: "#10b981" },
+    { id: "sector-delta", name: "Multipath Grid Delta", x: 40, y: 50, w: 60, h: 50, color: "rgba(239, 68, 68, 0.08)", borderColor: "#ef4444" }
   ]);
 
   const generateRandomLayout = () => {
@@ -30,20 +30,20 @@ export default function FloorplanView({ analysis }) {
     const borders = ["#22d3ee", "#3b82f6", "#10b981", "#ef4444", "#a855f7", "#f97316"];
     
     const roomDefs = [
-      { id: "sector-a", name: "Zone Alpha", x: 0, y: 0, w: xSplit, h: ySplitLeft },
-      { id: "sector-b", name: "Zone Beta", x: 0, y: ySplitLeft, w: xSplit, h: 100 - ySplitLeft },
-      { id: "sector-c", name: "Zone Gamma", x: xSplit, y: 0, w: 100 - xSplit, h: ySplitRight },
-      { id: "sector-d", name: "Zone Delta", x: xSplit, y: ySplitRight, w: 100 - xSplit, h: 100 - ySplitRight }
+      { id: "sector-a", name: "CSI Subgrid Alpha", x: 0, y: 0, w: xSplit, h: ySplitLeft },
+      { id: "sector-b", name: "CSI Subgrid Beta", x: 0, y: ySplitLeft, w: xSplit, h: 100 - ySplitLeft },
+      { id: "sector-c", name: "CSI Subgrid Gamma", x: xSplit, y: 0, w: 100 - xSplit, h: ySplitRight },
+      { id: "sector-d", name: "CSI Subgrid Delta", x: xSplit, y: ySplitRight, w: 100 - xSplit, h: 100 - ySplitRight }
     ];
     
     if (Math.random() > 0.4) {
       const subSplit = Math.floor(xSplit * (0.3 + Math.random() * 0.4));
-      roomDefs[1] = { id: "sector-b-1", name: "Zone Epsilon", x: 0, y: ySplitLeft, w: subSplit, h: 100 - ySplitLeft };
-      roomDefs.push({ id: "sector-b-2", name: "Zone Zeta", x: subSplit, y: ySplitLeft, w: xSplit - subSplit, h: 100 - ySplitLeft });
+      roomDefs[1] = { id: "sector-b-1", name: "CSI Subgrid Epsilon", x: 0, y: ySplitLeft, w: subSplit, h: 100 - ySplitLeft };
+      roomDefs.push({ id: "sector-b-2", name: "CSI Subgrid Zeta", x: subSplit, y: ySplitLeft, w: xSplit - subSplit, h: 100 - ySplitLeft });
     } else if (Math.random() > 0.4) {
       const subSplit = xSplit + Math.floor((100 - xSplit) * (0.3 + Math.random() * 0.4));
-      roomDefs[2] = { id: "sector-c-1", name: "Zone Eta", x: xSplit, y: 0, w: subSplit - xSplit, h: ySplitRight };
-      roomDefs.push({ id: "sector-c-2", name: "Zone Theta", x: subSplit, y: 0, w: 100 - subSplit, h: ySplitRight });
+      roomDefs[2] = { id: "sector-c-1", name: "CSI Subgrid Eta", x: xSplit, y: 0, w: subSplit - xSplit, h: ySplitRight };
+      roomDefs.push({ id: "sector-c-2", name: "CSI Subgrid Theta", x: subSplit, y: 0, w: 100 - subSplit, h: ySplitRight });
     }
     
     const randomizedRooms = roomDefs.map((room, idx) => ({
@@ -61,7 +61,7 @@ export default function FloorplanView({ analysis }) {
     const x = Math.floor(Math.random() * (100 - w));
     const y = Math.floor(Math.random() * (100 - h));
     const id = `zone-${Date.now()}`;
-    const name = `Zone ${String.fromCharCode(65 + (rooms.length % 26))}`;
+    const name = `Sensing Zone ${String.fromCharCode(65 + (rooms.length % 26))}`;
     
     const borders = ["#22d3ee", "#3b82f6", "#10b981", "#ef4444", "#a855f7", "#f97316"];
     const colorSeed = Math.floor(Math.random() * borders.length);
@@ -118,23 +118,23 @@ export default function FloorplanView({ analysis }) {
     const borders = ["#22d3ee", "#3b82f6", "#10b981", "#ef4444", "#a855f7", "#f97316"];
     
     const roomDefs = [
-      { id: "wifi-alpha", name: "CSI Sector Alpha", x: 0, y: 0, w: finalX, h: finalYLeft },
-      { id: "wifi-beta", name: "CSI Sector Beta", x: 0, y: finalYLeft, w: finalX, h: 100 - finalYLeft },
-      { id: "wifi-gamma", name: "CSI Sector Gamma", x: finalX, y: 0, w: 100 - finalX, h: finalYRight },
-      { id: "wifi-delta", name: "CSI Sector Delta", x: finalX, y: finalYRight, w: 100 - finalX, h: 100 - finalYRight }
+      { id: "wifi-alpha", name: "Sensing Grid Sector A", x: 0, y: 0, w: finalX, h: finalYLeft },
+      { id: "wifi-beta", name: "Sensing Grid Sector B", x: 0, y: finalYLeft, w: finalX, h: 100 - finalYLeft },
+      { id: "wifi-gamma", name: "Sensing Grid Sector C", x: finalX, y: 0, w: 100 - finalX, h: finalYRight },
+      { id: "wifi-delta", name: "Sensing Grid Sector D", x: finalX, y: finalYRight, w: 100 - finalX, h: 100 - finalYRight }
     ];
     
     // Dynamically split sector subdivisions when heavy multipath signals are registered
     if (wallDensity > 18) {
       const subSplit = Math.round(finalX * 0.5);
-      roomDefs[1] = { id: "wifi-beta-1", name: "CSI Sector Beta West", x: 0, y: finalYLeft, w: subSplit, h: 100 - finalYLeft };
-      roomDefs.push({ id: "wifi-beta-2", name: "CSI Sector Beta East", x: subSplit, y: finalYLeft, w: finalX - subSplit, h: 100 - finalYLeft });
+      roomDefs[1] = { id: "wifi-beta-1", name: "Sensing Grid Sector B-1", x: 0, y: finalYLeft, w: subSplit, h: 100 - finalYLeft };
+      roomDefs.push({ id: "wifi-beta-2", name: "Sensing Grid Sector B-2", x: subSplit, y: finalYLeft, w: finalX - subSplit, h: 100 - finalYLeft });
     }
     
     if (reflectorDensity > 12) {
       const subSplit = finalX + Math.round((100 - finalX) * 0.5);
-      roomDefs[2] = { id: "wifi-gamma-1", name: "CSI Sector Gamma West", x: finalX, y: 0, w: subSplit - finalX, h: finalYRight };
-      roomDefs.push({ id: "wifi-gamma-2", name: "CSI Sector Gamma East", x: subSplit, y: 0, w: 100 - subSplit, h: finalYRight });
+      roomDefs[2] = { id: "wifi-gamma-1", name: "Sensing Grid Sector C-1", x: finalX, y: 0, w: subSplit - finalX, h: finalYRight };
+      roomDefs.push({ id: "wifi-gamma-2", name: "Sensing Grid Sector C-2", x: subSplit, y: 0, w: 100 - subSplit, h: finalYRight });
     }
     
     // Read current entity locations to clear paths (mapping walking routes around calculated walls)
@@ -294,7 +294,7 @@ export default function FloorplanView({ analysis }) {
         {/* Header toolbar */}
         <div className="flex justify-between items-center border-b border-[var(--border-glass)] pb-3">
           <div>
-            <h3 className="text-base font-semibold text-gray-200">Volumetric Floorplan Room Modeler</h3>
+            <h3 className="text-base font-semibold text-gray-200">WiFi Spatial Propagation & Boundary Modeler</h3>
             <p className="text-[10px] text-[var(--text-muted)] font-mono">Real-time target projection and multi-path receiver node mapping</p>
           </div>
           <div className="flex items-center gap-2 bg-black/40 border border-[var(--border-glass)] p-1 rounded-lg">
@@ -355,7 +355,7 @@ export default function FloorplanView({ analysis }) {
                 return (
                   <div
                     key={room.id}
-                    className="absolute transition-all duration-300 border font-mono"
+                    className="absolute transition-all duration-300 border font-mono overflow-hidden"
                     style={{
                       left: `${room.x}%`,
                       top: `${room.y}%`,
@@ -374,6 +374,24 @@ export default function FloorplanView({ analysis }) {
                       transformStyle: "preserve-3d"
                     }}
                   >
+                    
+                    {/* Dynamic WiFi signal propagation aura */}
+                    <div 
+                      className="absolute inset-0 pointer-events-none overflow-hidden"
+                      style={{ transformStyle: "preserve-3d" }}
+                    >
+                      <div 
+                        className="absolute inset-[-100%] border border-dashed rounded-full pointer-events-none opacity-[0.06] animate-ping" 
+                        style={{ 
+                          borderColor: occupied ? (isHostile ? "#ef4444" : "#22d3ee") : room.borderColor, 
+                          animationDuration: occupied ? '3s' : '6s', 
+                          animationDelay: `${(room.x % 3) * 0.4}s` 
+                        }} 
+                      />
+                      <div 
+                        className="absolute inset-0 bg-gradient-to-tr from-transparent via-[var(--accent)]/[0.015] to-transparent pointer-events-none"
+                      />
+                    </div>
                     
                     {/* Isometric Volumetric Extruded Walls (Neon glow) */}
                     {viewMode === "3d" && (
@@ -411,11 +429,11 @@ export default function FloorplanView({ analysis }) {
                       </>
                     )}
 
-                    {/* Room Label */}
+                    {/* Target Count HUD (Billboarded/Screen-Aligned in 3D Mode) */}
                     <div 
                       className="absolute inset-0 flex flex-col justify-center items-center p-2 text-center pointer-events-none"
                       style={{
-                        transform: viewMode === "3d" ? "translateZ(35px)" : "none",
+                        transform: viewMode === "3d" ? "translate3d(0px, 0px, 35px) rotateZ(40deg) rotateX(-55deg)" : "none",
                         transformStyle: "preserve-3d"
                       }}
                     >
@@ -447,23 +465,23 @@ export default function FloorplanView({ analysis }) {
                   <div className="absolute inset-0 w-12 h-12 -left-6 -top-6 rounded-full border border-cyan-400/20 bg-cyan-400/3 animate-ping pointer-events-none" style={{ animationDuration: '4.5s', animationDelay: '1.5s' }} />
                   <div className="absolute inset-0 w-20 h-20 -left-10 -top-10 rounded-full border border-cyan-400/10 bg-transparent animate-ping pointer-events-none" style={{ animationDuration: '6s', animationDelay: '3s' }} />
                   
-                  {/* Glowing core indicator */}
+                  {/* Glowing core AP receiver indicator (Billboarded/Screen-Aligned in 3D Mode) */}
                   <div 
                     className="w-4 h-4 rounded-full flex items-center justify-center border border-white/20 shadow-[0_0_8px_rgba(255,255,255,0.2)]"
                     style={{
                       backgroundColor: node.color,
-                      transform: viewMode === "3d" ? "translateZ(15px)" : "none",
+                      transform: viewMode === "3d" ? "translate3d(0, 0, 15px) rotateZ(40deg) rotateX(-55deg)" : "none",
                       transformStyle: "preserve-3d"
                     }}
                   >
                     <Cpu size={8} className="text-white" />
                   </div>
                   
-                  {/* Node Hover Label */}
+                  {/* Node Hover Label (Billboarded/Screen-Aligned in 3D Mode) */}
                   <div 
                     className="absolute bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/85 border border-white/15 px-2 py-0.5 rounded text-[8px] font-mono text-gray-300 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
                     style={{
-                      transform: viewMode === "3d" ? "translate3d(-50%, 0px, 30px)" : "translateX(-50%)"
+                      transform: viewMode === "3d" ? "translate3d(-50%, 0px, 30px) rotateZ(40deg) rotateX(-55deg)" : "translateX(-50%)"
                     }}
                   >
                     {node.name} ({node.x}m, {node.y}m)
@@ -513,25 +531,26 @@ export default function FloorplanView({ analysis }) {
                       </>
                     )}
 
-                    {/* Floating Avatar core */}
+                    {/* Floating Avatar core (Billboarded/Screen-Aligned in 3D Mode so it does not rotate) */}
                     <div
                       className="w-6 h-6 rounded-full flex items-center justify-center font-mono font-bold text-xs bg-black/60 border border-white/30 shadow-[0_0_12px_rgba(255,255,255,0.2)] select-none cursor-pointer"
                       style={{
                         borderColor: color,
-                        transform: viewMode === "3d" ? "translateZ(30px)" : "none"
+                        transform: viewMode === "3d" ? "translate3d(0, 0, 30px) rotateZ(40deg) rotateX(-55deg)" : "none",
+                        transformStyle: "preserve-3d"
                       }}
                       title={`${ent.name} (${label})`}
                     >
                       {icon}
                     </div>
 
-                    {/* Target Dynamic Avatar label */}
+                    {/* Target Dynamic Avatar label (Billboarded/Screen-Aligned in 3D Mode so it is completely upright) */}
                     <div 
                       className="absolute left-7 top-1/2 -translate-y-1/2 bg-black/85 backdrop-blur-md border px-1.5 py-0.5 rounded text-[8px] font-mono whitespace-nowrap shadow-[0_0_10px_rgba(0,0,0,0.5)]"
                       style={{
                         borderColor: `${color}40`,
                         color: color,
-                        transform: viewMode === "3d" ? "translate3d(0px, 0px, 30px)" : "none"
+                        transform: viewMode === "3d" ? "translate3d(0px, -50%, 30px) rotateZ(40deg) rotateX(-55deg)" : "translateY(-50%)"
                       }}
                     >
                       {ent.name} <span className="text-gray-400">({label})</span>
