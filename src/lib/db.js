@@ -2,7 +2,7 @@ import sqlite3 from "sqlite3";
 import { open } from "sqlite";
 import path from "path";
 
-let dbInstance = null;
+let dbInstance = global.dbInstance || null;
 
 export async function getDB() {
   if (dbInstance) return dbInstance;
@@ -13,6 +13,16 @@ export async function getDB() {
     filename: dbPath,
     driver: sqlite3.Database,
   });
+
+  // Enable WAL journal mode and configure a busy timeout of 5000ms
+  try {
+    await dbInstance.exec("PRAGMA journal_mode = WAL;");
+    await dbInstance.exec("PRAGMA busy_timeout = 5000;");
+  } catch (err) {
+    console.warn("⚠️ [Database] Failed to set WAL mode or busy timeout:", err.message);
+  }
+
+  global.dbInstance = dbInstance;
 
   // Initialize DB schemas
   await dbInstance.exec(`
@@ -68,6 +78,53 @@ export async function getDB() {
       lastDetected INTEGER
     );
   `);
+
+  // Migration: Add missing columns to entities table if they don't exist
+  try {
+    const columns = await dbInstance.all("PRAGMA table_info(entities)");
+    const columnNames = columns.map(c => c.name);
+    
+    const requiredColumns = [
+      { name: "sleepStage", type: "TEXT" },
+      { name: "age", type: "INTEGER" },
+      { name: "gaitSpeed", type: "REAL" },
+      { name: "bodyDensity", type: "REAL" }
+    ];
+    
+    for (const col of requiredColumns) {
+      if (!columnNames.includes(col.name)) {
+        console.log(`💾 [Database] Migrating entities schema: Adding column ${col.name}`);
+        await dbInstance.exec(`ALTER TABLE entities ADD COLUMN ${col.name} ${col.type}`);
+      }
+    }
+  } catch (migrationError) {
+    console.error("❌ [Database] Migration failed for entities table:", migrationError);
+  }
+
+  // Migration: Add missing columns to occupants table if they don't exist
+  try {
+    const occColumns = await dbInstance.all("PRAGMA table_info(occupants)");
+    const occColumnNames = occColumns.map(c => c.name);
+
+    const requiredOccColumns = [
+      { name: "gender", type: "TEXT" },
+      { name: "healthStatus", type: "TEXT" },
+      { name: "age", type: "INTEGER" },
+      { name: "targetBpm", type: "INTEGER" },
+      { name: "notes", type: "TEXT" },
+      { name: "lastDetected", type: "INTEGER" },
+      { name: "contactInfo", type: "TEXT" }
+    ];
+
+    for (const col of requiredOccColumns) {
+      if (!occColumnNames.includes(col.name)) {
+        console.log(`💾 [Database] Migrating occupants schema: Adding column ${col.name}`);
+        await dbInstance.exec(`ALTER TABLE occupants ADD COLUMN ${col.name} ${col.type}`);
+      }
+    }
+  } catch (migrationError) {
+    console.error("❌ [Database] Migration failed for occupants table:", migrationError);
+  }
 
   // Seed default occupants if table is empty
   const count = await dbInstance.get("SELECT COUNT(*) as count FROM occupants");

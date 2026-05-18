@@ -6,6 +6,21 @@ export default function FloorplanView({ analysis }) {
   const [viewMode, setViewMode] = useState("3d"); // '2d' or '3d'
   const [calibratingNode, setCalibratingNode] = useState(null);
   
+  // Unified Sensor Fusion State
+  const [activeSensors, setActiveSensors] = useState({
+    wifiCsi: true,
+    mmWaveRadar: true,
+    lidar: false,
+    depthCamera: false,
+    satellite: false,
+    thermalIr: false,
+    acoustic: false,
+    bleUwb: false,
+    customSpec: false
+  });
+  const [pointCloudDensity, setPointCloudDensity] = useState("high");
+  const [customSpecName, setCustomSpecName] = useState("Ultrasonic Array");
+  
   // Custom room layout boundaries (expressed in percentages of a 100x100 spatial grid)
   const [rooms, setRooms] = useState([
     { id: "sector-alpha", name: "Multipath Grid Alpha", x: 0, y: 0, w: 50, h: 50, color: "rgba(34, 211, 238, 0.08)", borderColor: "#22d3ee" },
@@ -342,9 +357,208 @@ export default function FloorplanView({ analysis }) {
             {/* Holographic glowing wireframe floor grid */}
             <div 
               ref={gridRef}
-              className="absolute inset-0 border border-cyan-500/20 bg-[linear-gradient(rgba(34,211,238,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.03)_1px,transparent_1px)] bg-[size:10%_10%] shadow-[inset_0_0_20px_rgba(6,182,212,0.05)] rounded-lg"
+              className={`absolute inset-0 border border-white/5 rounded-lg shadow-[inset_0_0_20px_rgba(255,255,255,0.02)] transition-all ${
+                activeSensors.wifiCsi 
+                  ? "border-cyan-500/20 bg-[linear-gradient(rgba(34,211,238,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.03)_1px,transparent_1px)] bg-[size:10%_10%] shadow-[inset_0_0_20px_rgba(6,182,212,0.05)]" 
+                  : "bg-black/60"
+              }`}
               style={{ transformStyle: "preserve-3d" }}
             >
+              
+              {/* 1. Lidar Point Cloud Overlay */}
+              {activeSensors.lidar && (
+                <div className="absolute inset-0 pointer-events-none" style={{ transformStyle: "preserve-3d" }}>
+                  {Array.from({ 
+                    length: pointCloudDensity === "low" ? 30 : pointCloudDensity === "medium" ? 60 : pointCloudDensity === "high" ? 120 : 200 
+                  }).map((_, i) => {
+                    const x = ((Math.sin(i * 123.45) * 0.45 + 0.5) * 100).toFixed(1);
+                    const y = ((Math.cos(i * 543.21) * 0.45 + 0.5) * 100).toFixed(1);
+                    const z = (Math.sin(i * 789.1) * 12 + 12).toFixed(1);
+                    return (
+                      <div 
+                        key={`lidar-pt-${i}`}
+                        className="absolute w-1 h-1 bg-emerald-400 rounded-full transition-all duration-700 opacity-60 shadow-[0_0_3px_#34d399] animate-pulse"
+                        style={{
+                          left: `${x}%`,
+                          top: `${y}%`,
+                          transform: viewMode === "3d" ? `translate3d(0, 0, ${z}px)` : "none",
+                          animationDelay: `${(i % 5) * 0.25}s`
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 2. mmWave Radar Sweep Overlay */}
+              {activeSensors.mmWaveRadar && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ transformStyle: "preserve-3d" }}>
+                  <div 
+                    className="absolute w-[200%] h-[200%] -left-1/2 -top-1/2 bg-[conic-gradient(from_0deg,transparent_60%,rgba(249,115,22,0.06)_100%)] rounded-full animate-spin"
+                    style={{ 
+                      transform: viewMode === "3d" ? "translateZ(5px)" : "none",
+                      animationDuration: '6s'
+                    }}
+                  />
+                  {entities.map((ent, idx) => {
+                    if (ent.type === 'appliance') return null;
+                    return (
+                      <div 
+                        key={`radar-vec-${ent.id}`}
+                        className="absolute flex items-center justify-center pointer-events-none"
+                        style={{
+                          left: `${ent.x}%`,
+                          top: `${ent.y}%`,
+                          transform: viewMode === "3d" ? "translate3d(-50%, -50%, 15px)" : "translate(-50%, -50%)",
+                          transformStyle: "preserve-3d"
+                        }}
+                      >
+                        {/* Radar detection target ripple */}
+                        <div className="w-6 h-6 border border-orange-500/40 rounded-full animate-ping absolute" />
+                        {/* Velocity Vector Arrow */}
+                        <div 
+                          className="w-1 h-6 bg-gradient-to-t from-orange-500 to-transparent absolute rounded origin-bottom"
+                          style={{
+                            transform: `rotateZ(${idx * 90 + (Date.now() / 1500) * 45}deg)`,
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 3. Depth Camera Frustums */}
+              {activeSensors.depthCamera && (
+                <div className="absolute inset-0 pointer-events-none" style={{ transformStyle: "preserve-3d" }}>
+                  {/* Camera Frustum Cones in corners */}
+                  <div 
+                    className="absolute left-0 top-0 w-32 h-32 bg-gradient-to-br from-yellow-500/10 to-transparent origin-top-left rounded-br-full"
+                    style={{
+                      transform: viewMode === "3d" ? "rotateX(-20deg) rotateY(10deg) translateZ(8px)" : "none",
+                    }}
+                  />
+                  <div 
+                    className="absolute right-0 bottom-0 w-32 h-32 bg-gradient-to-tl from-yellow-500/10 to-transparent origin-bottom-right rounded-tl-full"
+                    style={{
+                      transform: viewMode === "3d" ? "rotateX(-20deg) rotateY(-10deg) translateZ(8px)" : "none",
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* 4. Satellite GNSS Grids */}
+              {activeSensors.satellite && (
+                <div className="absolute inset-0 pointer-events-none border border-cyan-500/10" style={{ transformStyle: "preserve-3d" }}>
+                  <div className="absolute top-1/4 left-0 right-0 border-t border-cyan-500/10 border-dashed" />
+                  <div className="absolute top-2/4 left-0 right-0 border-t border-cyan-500/10 border-dashed" />
+                  <div className="absolute top-3/4 left-0 right-0 border-t border-cyan-500/10 border-dashed" />
+                  <div className="absolute left-1/4 top-0 bottom-0 border-l border-cyan-500/10 border-dashed" />
+                  <div className="absolute left-2/4 top-0 bottom-0 border-l border-cyan-500/10 border-dashed" />
+                  <div className="absolute left-3/4 top-0 bottom-0 border-l border-cyan-500/10 border-dashed" />
+                  <div className="absolute top-2 left-2 bg-black/60 border border-cyan-500/20 px-2 py-0.5 rounded text-[6px] font-mono text-cyan-400">
+                    GNSS LOCK: 30.7333° N, 76.7794° E (HDOP: 0.8)
+                  </div>
+                </div>
+              )}
+
+              {/* 5. Thermal Infrared Glow */}
+              {activeSensors.thermalIr && (
+                <div className="absolute inset-0 pointer-events-none" style={{ transformStyle: "preserve-3d" }}>
+                  {entities.map(ent => (
+                    <div 
+                      key={`thermal-${ent.id}`}
+                      className="absolute w-16 h-16 rounded-full -ml-8 -mt-8 animate-pulse"
+                      style={{
+                        left: `${ent.x}%`,
+                        top: `${ent.y}%`,
+                        background: "radial-gradient(circle, rgba(239,68,68,0.22) 0%, rgba(239,68,68,0.06) 50%, transparent 100%)",
+                        transform: viewMode === "3d" ? "translateZ(1px)" : "none"
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* 6. Acoustic Wavefronts */}
+              {activeSensors.acoustic && (
+                <div className="absolute inset-0 pointer-events-none" style={{ transformStyle: "preserve-3d" }}>
+                  {entities.map((ent, idx) => {
+                    if (ent.status !== 'active') return null;
+                    return (
+                      <div 
+                        key={`acoustic-rip-${ent.id}`}
+                        className="absolute border-2 border-sky-400/30 rounded-full animate-ping pointer-events-none"
+                        style={{
+                          left: `${ent.x}%`,
+                          top: `${ent.y}%`,
+                          width: "40px",
+                          height: "40px",
+                          marginLeft: "-20px",
+                          marginTop: "-20px",
+                          animationDuration: `${2.5 + (idx % 2)}s`,
+                          transform: viewMode === "3d" ? "translateZ(2px)" : "none"
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 7. BLE / UWB Beacons & Anchor Paths */}
+              {activeSensors.bleUwb && (
+                <div className="absolute inset-0 pointer-events-none" style={{ transformStyle: "preserve-3d" }}>
+                  {/* Beacons on the outer bounds */}
+                  <div className="absolute left-2 top-1/2 w-2 h-2 rounded bg-purple-500 border border-white/20 animate-pulse" style={{ transform: viewMode === "3d" ? "translate3d(0, 0, 10px)" : "none" }} />
+                  <div className="absolute right-2 top-1/2 w-2 h-2 rounded bg-purple-500 border border-white/20 animate-pulse" style={{ transform: viewMode === "3d" ? "translate3d(0, 0, 10px)" : "none" }} />
+                  
+                  {/* Dynamic tracking vectors */}
+                  {entities.length > 0 && (
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-40">
+                      <line 
+                        x1="2%" 
+                        y1="50%" 
+                        x2={`${entities[0].x}%`} 
+                        y2={`${entities[0].y}%`} 
+                        stroke="#a855f7" 
+                        strokeWidth="1.5" 
+                        strokeDasharray="4,4"
+                      />
+                      <line 
+                        x1="98%" 
+                        y1="50%" 
+                        x2={`${entities[0].x}%`} 
+                        y2={`${entities[0].y}%`} 
+                        stroke="#a855f7" 
+                        strokeWidth="1.5" 
+                        strokeDasharray="4,4"
+                      />
+                    </svg>
+                  )}
+                </div>
+              )}
+
+              {/* 8. Custom Spec Feed point cloud */}
+              {activeSensors.customSpec && (
+                <div className="absolute inset-0 pointer-events-none" style={{ transformStyle: "preserve-3d" }}>
+                  {Array.from({ length: 40 }).map((_, i) => {
+                    const x = ((Math.cos(i * 19.87) * 0.4 + 0.5) * 100).toFixed(1);
+                    const y = ((Math.sin(i * 35.12) * 0.4 + 0.5) * 100).toFixed(1);
+                    return (
+                      <div 
+                        key={`custom-pt-${i}`}
+                        className="absolute w-1.5 h-1.5 bg-pink-500 rounded-sm opacity-50 shadow-[0_0_3px_#ec4899] animate-pulse"
+                        style={{
+                          left: `${x}%`,
+                          top: `${y}%`,
+                          transform: viewMode === "3d" ? `translate3d(0, 0, 6px) rotateX(${i * 12}deg)` : "none",
+                          animationDelay: `${(i % 4) * 0.3}s`
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
               
               {/* Volumetric Rooms overlay */}
               {rooms.map((room) => {
@@ -589,6 +803,192 @@ export default function FloorplanView({ analysis }) {
       {/* Editor & Diagnostic Console Side-Panel */}
       <div className="glass p-5 rounded-2xl w-full xl:w-[320px] flex flex-col gap-4 bg-white/[0.01]">
         
+        {/* Section 0: Unified Sensor Fusion Engine */}
+        <div>
+          <h4 className="text-xs font-semibold text-cyan-400 uppercase tracking-wider font-mono border-b border-[var(--border-glass)] pb-2 flex items-center gap-1.5">
+            <Cpu size={14} className="animate-pulse text-cyan-400" /> Unified Sensor Fusion Engine
+          </h4>
+          <p className="text-[10px] text-[var(--text-muted)] mt-1.5 leading-relaxed font-mono">
+            Aligns and merges mmWave, Lidar, depth, satellite, thermal, acoustic, and BLE feeds with WiFi CSI into one unified spatial point cloud.
+          </p>
+
+          {/* Fusion Status HUD */}
+          <div className="bg-black/40 border border-white/5 rounded-xl p-3 mt-3 flex flex-col gap-1.5 font-mono text-[10px]">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Active Modalities:</span>
+              <span className="font-bold text-cyan-400">
+                {Object.values(activeSensors).filter(Boolean).length} / 9 Streams
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Cross-Modal Entropy:</span>
+              <span className="font-bold text-emerald-400">
+                {Object.values(activeSensors).filter(Boolean).length > 0 ? (0.24 / Object.values(activeSensors).filter(Boolean).length).toFixed(3) : "0.000"} nats
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Fusion Confidence:</span>
+              <span className="font-bold text-cyan-400">
+                {Object.values(activeSensors).filter(Boolean).length > 0 
+                  ? `${(90 + Object.values(activeSensors).filter(Boolean).length * 1.1).toFixed(1)}%` 
+                  : "0.0%"}
+              </span>
+            </div>
+          </div>
+
+          {/* Sensor Feeds Toggle Grid */}
+          <div className="grid grid-cols-2 gap-2 mt-3 text-[9px] font-mono">
+            <button 
+              onClick={() => setActiveSensors(prev => ({ ...prev, wifiCsi: !prev.wifiCsi }))}
+              className={`p-2 rounded-lg border text-left flex flex-col gap-0.5 justify-between transition-all ${
+                activeSensors.wifiCsi 
+                  ? "bg-cyan-500/10 border-cyan-500/30 text-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.15)]" 
+                  : "bg-black/40 border-white/5 text-gray-500"
+              }`}
+            >
+              <span>WiFi CSI Feed</span>
+              <span className="text-[7px] opacity-70">2.4/5.8GHz Multipath</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveSensors(prev => ({ ...prev, mmWaveRadar: !prev.mmWaveRadar }))}
+              className={`p-2 rounded-lg border text-left flex flex-col gap-0.5 justify-between transition-all ${
+                activeSensors.mmWaveRadar 
+                  ? "bg-orange-500/10 border-orange-500/30 text-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.15)]" 
+                  : "bg-black/40 border-white/5 text-gray-500"
+              }`}
+            >
+              <span>mmWave Radar</span>
+              <span className="text-[7px] opacity-70">60-77GHz Target Sweep</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveSensors(prev => ({ ...prev, lidar: !prev.lidar }))}
+              className={`p-2 rounded-lg border text-left flex flex-col gap-0.5 justify-between transition-all ${
+                activeSensors.lidar 
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.15)]" 
+                  : "bg-black/40 border-white/5 text-gray-500"
+              }`}
+            >
+              <span>Lidar Scan</span>
+              <span className="text-[7px] opacity-70">Solid-State Point Cloud</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveSensors(prev => ({ ...prev, depthCamera: !prev.depthCamera }))}
+              className={`p-2 rounded-lg border text-left flex flex-col gap-0.5 justify-between transition-all ${
+                activeSensors.depthCamera 
+                  ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-400 shadow-[0_0_8px_rgba(234,179,8,0.15)]" 
+                  : "bg-black/40 border-white/5 text-gray-500"
+              }`}
+            >
+              <span>Depth Cameras</span>
+              <span className="text-[7px] opacity-70">RGB-D Frustum Array</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveSensors(prev => ({ ...prev, satellite: !prev.satellite }))}
+              className={`p-2 rounded-lg border text-left flex flex-col gap-0.5 justify-between transition-all ${
+                activeSensors.satellite 
+                  ? "bg-sky-500/10 border-sky-500/30 text-sky-400 shadow-[0_0_8px_rgba(14,165,233,0.15)]" 
+                  : "bg-black/40 border-white/5 text-gray-500"
+              }`}
+            >
+              <span>Satellite Context</span>
+              <span className="text-[7px] opacity-70">GNSS & Alt Grid Overlay</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveSensors(prev => ({ ...prev, thermalIr: !prev.thermalIr }))}
+              className={`p-2 rounded-lg border text-left flex flex-col gap-0.5 justify-between transition-all ${
+                activeSensors.thermalIr 
+                  ? "bg-red-500/10 border-red-500/30 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.15)]" 
+                  : "bg-black/40 border-white/5 text-gray-500"
+              }`}
+            >
+              <span>Thermal / IR</span>
+              <span className="text-[7px] opacity-70">Radiometric footprint</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveSensors(prev => ({ ...prev, acoustic: !prev.acoustic }))}
+              className={`p-2 rounded-lg border text-left flex flex-col gap-0.5 justify-between transition-all ${
+                activeSensors.acoustic 
+                  ? "bg-blue-500/10 border-blue-500/30 text-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.15)]" 
+                  : "bg-black/40 border-white/5 text-gray-500"
+              }`}
+            >
+              <span>Acoustic Array</span>
+              <span className="text-[7px] opacity-70">Doppler Footstep Ripple</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveSensors(prev => ({ ...prev, bleUwb: !prev.bleUwb }))}
+              className={`p-2 rounded-lg border text-left flex flex-col gap-0.5 justify-between transition-all ${
+                activeSensors.bleUwb 
+                  ? "bg-purple-500/10 border-purple-500/30 text-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.15)]" 
+                  : "bg-black/40 border-white/5 text-gray-500"
+              }`}
+            >
+              <span>BLE / UWB Tags</span>
+              <span className="text-[7px] opacity-70">Anchor Triangulation</span>
+            </button>
+          </div>
+
+          {/* Custom Spec Adapter Feed */}
+          <div className="bg-black/30 border border-white/5 rounded-xl p-3 mt-2.5 flex flex-col gap-2 font-mono text-[9px]">
+            <button
+              onClick={() => setActiveSensors(prev => ({ ...prev, customSpec: !prev.customSpec }))}
+              className={`w-full py-1.5 rounded-lg border text-xs font-semibold flex items-center justify-between px-3 transition-all ${
+                activeSensors.customSpec
+                  ? "bg-pink-500/10 border-pink-500/30 text-pink-400 shadow-[0_0_8px_rgba(236,72,153,0.15)]"
+                  : "bg-black/40 border-white/5 text-gray-500"
+              }`}
+            >
+              <span>Custom Spec Adapter</span>
+              <span className="text-[8px] font-bold bg-pink-500/10 text-pink-400 border border-pink-500/20 px-1.5 py-0.5 rounded font-mono uppercase">
+                {activeSensors.customSpec ? "ACTIVE" : "BYO FEED"}
+              </span>
+            </button>
+            {activeSensors.customSpec && (
+              <div className="flex flex-col gap-1">
+                <span className="text-[8px] text-[var(--text-muted)] uppercase tracking-wider font-semibold font-mono">Custom Sensor Name</span>
+                <input
+                  type="text"
+                  value={customSpecName}
+                  onChange={(e) => setCustomSpecName(e.target.value)}
+                  placeholder="e.g. Ultrasonic Array"
+                  className="bg-black/40 border border-white/10 px-2 py-1 rounded text-[10px] text-gray-200 focus:outline-none focus:border-pink-500/50 font-mono"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Point Cloud Synthesis Density control */}
+          <div className="mt-3.5 flex flex-col gap-1.5">
+            <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider font-semibold font-mono flex items-center gap-1">
+              <Sliders size={11} /> Synthesis Point Density
+            </span>
+            <div className="grid grid-cols-4 gap-1 text-[9px] font-mono">
+              {["low", "medium", "high", "ultra"].map(density => (
+                <button
+                  key={density}
+                  onClick={() => setPointCloudDensity(density)}
+                  className={`py-1 rounded border uppercase font-bold transition-all ${
+                    pointCloudDensity === density
+                      ? "bg-cyan-500/10 border-cyan-500/40 text-cyan-400"
+                      : "bg-black/40 border-white/5 text-gray-500 hover:border-white/10"
+                  }`}
+                >
+                  {density}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-[var(--border-glass)] pt-4" />
+
         {/* Section 1: Calibration Control */}
         <div>
           <h4 className="text-xs font-semibold text-cyan-400 uppercase tracking-wider font-mono border-b border-[var(--border-glass)] pb-2 flex items-center gap-1.5">

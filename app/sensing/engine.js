@@ -2,6 +2,7 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import { WebSocketServer, WebSocket } from "ws";
 import { saveTelemetry, saveEntities, saveEvent, getHistoricalTelemetry, getHistoricalEntities, getDB, getOccupants, updateOccupant } from "../../src/lib/db.js";
+import { initAnalyticsTables, startAnalyticsLoop, stopAnalyticsLoop, getAnalyticsData, getAllHealthSummaries, getRecentAlerts } from "../../src/lib/analytics.js";
 
 const execPromise = promisify(exec);
 
@@ -990,6 +991,15 @@ export function startSensingServer() {
   getWiFiSignal();
   scanNetworks();
 
+  // Initialize analytics tables and start pattern tracking
+  initAnalyticsTables().then(() => {
+    const analyticsTimers = startAnalyticsLoop(() => state.entities);
+    if (globalThis.sensingServerInstance) {
+      globalThis.sensingServerInstance.analyticsTimers = analyticsTimers;
+    }
+    console.log("📊 [Sensing Engine] Analytics & pattern tracking integrated.");
+  }).catch(err => console.error("❌ [Sensing Engine] Analytics init failed:", err));
+
   // ─── Socket Event Bindings ──────────────────────────────────────────
   if (wss) {
     wss.on("connection", (ws) => {
@@ -1119,6 +1129,33 @@ export function startSensingServer() {
               })
             });
             console.log("📡 [Sensing Engine] MQTT Live Test Broadcast Dispatched");
+          } else if (cmd.type === 'get_analytics') {
+            (async () => {
+              try {
+                const data = await getAnalyticsData(cmd.occupantId);
+                ws.send(JSON.stringify({ type: 'analytics_data', occupantId: cmd.occupantId, ...data }));
+              } catch (err) {
+                console.error("❌ [Sensing Engine] Analytics query failed:", err);
+              }
+            })();
+          } else if (cmd.type === 'get_health_summaries') {
+            (async () => {
+              try {
+                const summaries = await getAllHealthSummaries();
+                ws.send(JSON.stringify({ type: 'health_summaries', summaries }));
+              } catch (err) {
+                console.error("❌ [Sensing Engine] Health summaries query failed:", err);
+              }
+            })();
+          } else if (cmd.type === 'get_health_alerts') {
+            (async () => {
+              try {
+                const alerts = await getRecentAlerts(cmd.limit || 50);
+                ws.send(JSON.stringify({ type: 'health_alerts_data', alerts }));
+              } catch (err) {
+                console.error("❌ [Sensing Engine] Health alerts query failed:", err);
+              }
+            })();
           }
         } catch (e) {
           // Ignore invalid frames
@@ -1154,6 +1191,7 @@ export function stopSensingServer() {
     }
   }
 
+  stopAnalyticsLoop();
   globalThis.sensingServerActive = false;
   globalThis.sensingServerInstance = null;
   console.log("✅ [Sensing Engine] Pipeline terminated cleanly.");
