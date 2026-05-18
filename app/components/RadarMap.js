@@ -6,6 +6,26 @@ export default function RadarMap({ telemetry, analysis, selectedEntityId, onSele
   const isMotion = telemetry?.motion;
   const entities = analysis?.entities || [];
   const security = analysis?.security || {};
+  const [trails, setTrails] = useState({});
+
+  useEffect(() => {
+    if (!entities || entities.length === 0) return;
+    setTrails(prev => {
+      const newTrails = { ...prev };
+      entities.forEach(e => {
+        if (!newTrails[e.id]) newTrails[e.id] = [];
+        const lastPos = newTrails[e.id][newTrails[e.id].length - 1];
+        if (!lastPos || Math.abs(lastPos.x - e.x) > 0.5 || Math.abs(lastPos.y - e.y) > 0.5) {
+          newTrails[e.id].push({ x: e.x, y: e.y, time: Date.now() });
+          if (newTrails[e.id].length > 20) newTrails[e.id].shift();
+        }
+      });
+      Object.keys(newTrails).forEach(id => {
+        if (!entities.find(e => e.id === id)) delete newTrails[id];
+      });
+      return newTrails;
+    });
+  }, [entities]);
 
   // Helper to choose the right icon
   const getIcon = (type, name = "") => {
@@ -210,6 +230,27 @@ export default function RadarMap({ telemetry, analysis, selectedEntityId, onSele
           );
         })()}
 
+        {/* Doppler Trajectory Trails */}
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none z-[15]">
+          {Object.entries(trails).map(([id, path]) => {
+            if (path.length < 2) return null;
+            const points = path.map(p => `${p.x},${p.y}`).join(' ');
+            return (
+              <polyline 
+                key={`trail-${id}`} 
+                points={points} 
+                fill="none" 
+                stroke="var(--accent)" 
+                strokeWidth="0.4" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className="opacity-40 drop-shadow-[0_0_2px_var(--accent-glow)]" 
+                style={{ strokeDasharray: "1 2" }} 
+              />
+            );
+          })}
+        </svg>
+
         {/* Detected Targets */}
         {entities.map((e) => {
           const isSelected = e.id === selectedEntityId;
@@ -232,6 +273,14 @@ export default function RadarMap({ telemetry, analysis, selectedEntityId, onSele
                 e.type === 'pet' ? 'bg-emerald-500' : 'bg-[var(--accent)]'
               }`} />
               
+              {/* Micro-Motion Biometrics (Heartbeat Ripples) */}
+              {(e.status === 'sleeping' || e.status === 'resting') && e.vitals?.heartRate > 0 && (
+                <div 
+                  className={`absolute inset-0 rounded-full border-[1.5px] animate-ping z-[1] pointer-events-none ${e.status === 'sleeping' ? 'border-[var(--purple)]' : 'border-[var(--accent)]'}`} 
+                  style={{ animationDuration: `${60 / e.vitals.heartRate}s`, opacity: 0.6 }} 
+                />
+              )}
+
               <div className={`relative text-white p-1.5 rounded-full w-8 h-8 flex items-center justify-center z-[2] transition-all duration-300 ${getColorClass(e)}`}>
                 {getIcon(e.type, e.name)}
               </div>
