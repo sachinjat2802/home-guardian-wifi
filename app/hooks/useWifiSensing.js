@@ -19,6 +19,11 @@ export function useWifiSensing() {
   const [signalHistory, setSignalHistory] = useState([]);
   const [occupants, setOccupants] = useState([]);
   
+  // Analytics State
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [healthSummaries, setHealthSummaries] = useState([]);
+  const [healthAlerts, setHealthAlerts] = useState([]);
+  
   const wsRef = useRef(null);
   const reconnectRef = useRef(null);
   const localLoopRef = useRef(null);
@@ -722,6 +727,8 @@ export function useWifiSensing() {
         // Request database history over WebSocket immediately
         ws.send(JSON.stringify({ type: "get_history" }));
         ws.send(JSON.stringify({ type: "get_occupants" }));
+        ws.send(JSON.stringify({ type: "get_health_summaries" }));
+        ws.send(JSON.stringify({ type: "get_health_alerts", limit: 20 }));
       };
 
       ws.onmessage = (event) => {
@@ -756,6 +763,15 @@ export function useWifiSensing() {
               if (data.occupants) {
                 setOccupants(data.occupants);
               }
+              break;
+            case "analytics_data":
+              setAnalyticsData(data);
+              break;
+            case "health_summaries":
+              setHealthSummaries(data.summaries || []);
+              break;
+            case "health_alerts_data":
+              setHealthAlerts(data.alerts || []);
               break;
             case "telemetry":
               setTelemetry(data);
@@ -959,6 +975,24 @@ export function useWifiSensing() {
     }
   }, [addEvent]);
 
+  const fetchAnalytics = useCallback((occupantId) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "get_analytics", occupantId }));
+    }
+  }, []);
+
+  const fetchHealthSummaries = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "get_health_summaries" }));
+    }
+  }, []);
+
+  const fetchHealthAlerts = useCallback((limit = 50) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "get_health_alerts", limit }));
+    }
+  }, []);
+
   return {
     connected,
     mode,
@@ -979,6 +1013,12 @@ export function useWifiSensing() {
     toggleMqtt,
     configureMqtt,
     testMqtt,
-    updateOccupantDetails
+    updateOccupantDetails,
+    analyticsData,
+    healthSummaries,
+    healthAlerts,
+    fetchAnalytics,
+    fetchHealthSummaries,
+    fetchHealthAlerts
   };
 }
