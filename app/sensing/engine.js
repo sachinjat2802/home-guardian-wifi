@@ -475,7 +475,7 @@ export function startSensingServer() {
           gender: 'Female',
           classification: 'Bovine Livestock'
         },
-        status: 'grazing',
+        status: (Math.sin((t * 0.02) + i) > 0.5) ? 'active' : 'grazing',
         x: trilat.x,
         y: trilat.y,
         trilat: {
@@ -514,7 +514,7 @@ export function startSensingServer() {
           gender: i % 2 === 0 ? 'Female' : 'Male',
           classification: 'Bubaline Livestock'
         },
-        status: 'resting',
+        status: (Math.sin((t * 0.015) + i * 2) > 0.4) ? 'active' : 'resting',
         x: trilat.x,
         y: trilat.y,
         trilat: {
@@ -578,7 +578,7 @@ export function startSensingServer() {
         confidence: 0.65,
         vitals: { heartRate: 0, breathingRate: 0, hrv: 0, temp: 0, spo2: 0 },
         biometrics: { age: 0, ageEst: 0, gaitSpeed: 3.5, bodyDensity: 0.08, classification: i % 2 === 0 ? 'Ghost Echo' : 'Multipath Anomaly' },
-        status: 'active',
+        status: (Math.sin((t * 0.08) + i * 3) > 0.2) ? 'active' : 'fading',
         x: trilat.x,
         y: trilat.y,
         trilat: {
@@ -602,7 +602,7 @@ export function startSensingServer() {
         confidence: 0.98,
         vitals: { heartRate: 0, breathingRate: 60 },
         biometrics: { age: 0, ageEst: 0, gaitSpeed: 5.0, bodyDensity: 7.85, classification: 'Electronic Appliance' },
-        status: 'active',
+        status: (Math.sin((t * 0.005) + i) > 0.8) ? 'resting' : 'active',
         x: trilat.x,
         y: trilat.y,
         trilat: {

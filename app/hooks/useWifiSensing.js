@@ -360,7 +360,7 @@ export function useWifiSensing() {
           gender: 'Female',
           classification: 'Bovine Livestock'
         },
-        status: 'grazing',
+        status: (Math.sin((t * 0.02) + i) > 0.5) ? 'active' : 'grazing',
         x: 50 + Math.cos(t * 0.012 * i + (i * Math.PI / 3)) * (22 + i * 4 + vitals.motionEnergy * 5),
         y: 50 + Math.sin(t * 0.012 * i + (i * Math.PI / 3)) * (18 + i * 3 + vitals.motionEnergy * 4),
       });
@@ -389,7 +389,7 @@ export function useWifiSensing() {
           gender: i % 2 === 0 ? 'Female' : 'Male',
           classification: 'Bubaline Livestock'
         },
-        status: 'resting',
+        status: (Math.sin((t * 0.015) + i * 2) > 0.4) ? 'active' : 'resting',
         x: 50 + Math.sin(t * 0.01 * i + (i * Math.PI / 2.5)) * (25 + i * 3.5),
         y: 50 + Math.cos(t * 0.01 * i + (i * Math.PI / 2.5)) * (20 + i * 3.0),
       });
@@ -435,7 +435,7 @@ export function useWifiSensing() {
         confidence: 0.65,
         vitals: { heartRate: 0, breathingRate: 0, hrv: 0, temp: 0, spo2: 0 },
         biometrics: { age: 0, ageEst: 0, gaitSpeed: 3.5, bodyDensity: 0.08, classification: i % 2 === 0 ? 'Ghost Echo' : 'Multipath Anomaly' },
-        status: 'active',
+        status: (Math.sin((t * 0.08) + i * 3) > 0.2) ? 'active' : 'fading',
         x: 50 + Math.sin(t * 0.1 * i) * (28 + vitals.motionEnergy * 10),
         y: 50 + Math.cos(t * 0.1 * i) * (22 + vitals.motionEnergy * 8),
       });
@@ -450,7 +450,7 @@ export function useWifiSensing() {
         confidence: 0.98,
         vitals: { heartRate: 0, breathingRate: 60 },
         biometrics: { age: 0, ageEst: 0, gaitSpeed: 5.0, bodyDensity: 7.85, classification: 'Electronic Appliance' },
-        status: 'active',
+        status: (Math.sin((t * 0.005) + i) > 0.8) ? 'resting' : 'active',
         x: 50,
         y: 50,
       });
