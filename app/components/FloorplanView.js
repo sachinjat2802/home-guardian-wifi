@@ -106,8 +106,8 @@ export default function FloorplanView({ analysis }) {
     const dynamicDensity = analysis?.csiClassification?.dynamic ?? 20;
     
     // 2. Compute room grid sizing and coordinates using active antenna nodes mapping
-    const avgApX = nodes.reduce((sum, n) => sum + n.x, 0) / nodes.length;
-    const avgApY = nodes.reduce((sum, n) => sum + n.y, 0) / nodes.length;
+    const avgApX = nodes && nodes.length > 0 ? (nodes.reduce((sum, n) => sum + n.x, 0) / nodes.length) : 50;
+    const avgApY = nodes && nodes.length > 0 ? (nodes.reduce((sum, n) => sum + n.y, 0) / nodes.length) : 50;
     
     // Determine dynamic dividing splits based on signal density center
     const csiModX = (avgApX / 100) * 0.4 + 0.3; // bound between 30% and 70%

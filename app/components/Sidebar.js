@@ -1,5 +1,5 @@
 "use client";
-import { Radio, Home, Activity, Shield, Wifi, BarChart3, Brain, ShieldCheck, Layers, Users } from "lucide-react";
+import { Radio, Home, Activity, Shield, Wifi, BarChart3, Brain, ShieldCheck, Layers, Users, Sparkles } from "lucide-react";
 
 const tabs = [
   { id: "dashboard", label: "Dashboard", icon: Home },
@@ -10,6 +10,7 @@ const tabs = [
   { id: "snn", label: "SNN Engine", icon: Brain },
   { id: "occupants", label: "Occupants Registry", icon: Users },
   { id: "security", label: "Security", icon: Shield },
+  { id: "ai-copilot", label: "AI Copilot", icon: Sparkles },
 ];
 
 export default function Sidebar({ activeTab, setActiveTab, connected, mode }) {

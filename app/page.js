@@ -12,7 +12,8 @@ import SnnPanel from "./components/SnnPanel";
 import FloorplanView from "./components/FloorplanView";
 import PoseReconstructor from "./components/PoseReconstructor";
 import OccupantsRegistry from "./components/OccupantsRegistry";
-import { Shield, ShieldAlert, Play, Square, RefreshCw, Volume2, VolumeX, AlertOctagon, Palette } from "lucide-react";
+import AiCopilot from "./components/AiCopilot";
+import { Shield, ShieldAlert, Play, Square, RefreshCw, Volume2, VolumeX, AlertOctagon, Palette, Sparkles } from "lucide-react";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -157,6 +158,7 @@ export default function Home() {
         {activeTab === "snn" && <SnnPanel analysis={sensing.analysis} snnConfig={sensing.snnConfig} />}
         {activeTab === "occupants" && <OccupantsRegistry sensing={sensing} />}
         {activeTab === "security" && <SecurityView sensing={sensing} soundEnabled={soundEnabled} setSoundEnabled={setSoundEnabled} />}
+        {activeTab === "ai-copilot" && <AiCopilot sensing={sensing} />}
       </main>
     </div>
   );
@@ -211,10 +213,14 @@ function Header({ sensing, soundEnabled, setSoundEnabled, theme, setTheme }) {
             <select
               value={sensing.mode}
               onChange={(e) => sensing.changeMode(e.target.value)}
-              className="bg-black/40 border border-[var(--border-glass)] px-3 py-1.5 rounded-full text-[10px] font-mono text-[var(--cyan)] font-bold focus:outline-none cursor-pointer hover:border-[var(--cyan)]/50 transition-all duration-300"
+              disabled={sensing.mode === "local-simulation"}
+              className="bg-black/40 border border-[var(--border-glass)] px-3 py-1.5 rounded-full text-[10px] font-mono text-[var(--cyan)] font-bold focus:outline-none cursor-pointer hover:border-[var(--cyan)]/50 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <option value="simulation">📡 SIMULATION</option>
               <option value="real">🔌 REAL HARDWARE</option>
+              {sensing.mode === "local-simulation" && (
+                <option value="local-simulation">⚠️ LOCAL SIMULATION FALLBACK</option>
+              )}
             </select>
           </div>
         ) : (
@@ -226,7 +232,7 @@ function Header({ sensing, soundEnabled, setSoundEnabled, theme, setTheme }) {
         
         {sensing.connectedNetwork && (
           <div className="text-[10px] font-mono text-[var(--text-secondary)] glass px-3 py-1.5 rounded-full border border-[var(--border-glass)]">
-            {sensing.connectedNetwork.ssid} • Ch {sensing.connectedNetwork.channel} • {sensing.telemetry?.signal}%
+            {sensing.connectedNetwork.ssid} • Ch {sensing.connectedNetwork.channel} • {sensing.telemetry?.signal !== undefined ? `${sensing.telemetry.signal}%` : "N/A"}
           </div>
         )}
       </div>
@@ -266,6 +272,7 @@ function DashboardView({ sensing, selectedEntityId, setSelectedEntityId, theme }
       
       {/* Right side analytics column */}
       <div className="flex flex-col gap-4 min-h-0 overflow-hidden">
+        <AiThreatSummaryWidget sensing={sensing} />
         <AnalysisPanel analysis={sensing.analysis} />
         <EventLog events={sensing.events} />
       </div>
@@ -427,18 +434,23 @@ function MqttIntegratorPanel({ sensing }) {
   const [publishOccupancy, setPublishOccupancy] = useState(mqtt.publishOccupancy);
   const [publishVitals, setPublishVitals] = useState(mqtt.publishVitals);
   const [publishAlerts, setPublishAlerts] = useState(mqtt.publishAlerts);
-  const [prevMqtt, setPrevMqtt] = useState(sensing.analysis?.mqtt);
+
+  const activeMqtt = sensing.analysis?.mqtt;
 
   // Keep state variables synchronized when MQTT analysis updates
-  if (sensing.analysis?.mqtt && sensing.analysis.mqtt !== prevMqtt) {
-    const activeMqtt = sensing.analysis.mqtt;
-    setPrevMqtt(activeMqtt);
-    setHost(activeMqtt.host || "mqtt://192.168.1.150:1883");
-    setTopic(activeMqtt.topic || "home/guardian");
-    setPublishOccupancy(activeMqtt.publishOccupancy !== false);
-    setPublishVitals(activeMqtt.publishVitals !== false);
-    setPublishAlerts(activeMqtt.publishAlerts !== false);
-  }
+  useEffect(() => {
+    setHost(activeMqtt?.host ?? "mqtt://192.168.1.150:1883");
+    setTopic(activeMqtt?.topic ?? "home/guardian");
+    setPublishOccupancy(activeMqtt?.publishOccupancy ?? true);
+    setPublishVitals(activeMqtt?.publishVitals ?? true);
+    setPublishAlerts(activeMqtt?.publishAlerts ?? true);
+  }, [
+    activeMqtt?.host,
+    activeMqtt?.topic,
+    activeMqtt?.publishOccupancy,
+    activeMqtt?.publishVitals,
+    activeMqtt?.publishAlerts
+  ]);
 
   const handleSave = () => {
     sensing.configureMqtt({
@@ -576,6 +588,65 @@ function StatCard({ label, value, sub, color }) {
       <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-semibold block">{label}</span>
       <span className="text-xl font-bold font-mono mt-1 block" style={{ color }}>{value}</span>
       <span className="text-[10px] text-[var(--text-secondary)] mt-0.5 block leading-tight">{sub}</span>
+    </div>
+  );
+}
+
+function AiThreatSummaryWidget({ sensing }) {
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(false);
+  
+  const entities = sensing.analysis?.entities || [];
+  const triggerSummary = async () => {
+    setLoading(true);
+    const context = `Active Entities Detected: ${entities.length}
+Target Classification Breakdown: ${entities.map(e => e.type).join(', ') || 'None'}
+Security Perimeter Status: ${sensing.analysis?.security?.triggered ? 'BREACHED / ALERT TRIGGERED' : 'SECURE'}
+Overall Motion Energy: ${sensing.analysis?.vitals?.motionEnergy || 0}
+SNN Spiking Activity: ${sensing.analysis?.snn?.spikes || 0}
+
+Prompt: Write a strict maximum 2-sentence highly professional AI Security & Biometric Threat Assessment based on the above raw telemetry. Output ONLY the summary.`;
+    
+    try {
+      const response = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: context })
+      });
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let reply = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        reply += decoder.decode(value);
+        setSummary(reply);
+      }
+    } catch (err) {
+      setSummary("❌ Intelligence server unavailable. Ensure NVIDIA Nemotron-3 API key is configured.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="glass p-4 rounded-xl bg-gradient-to-br from-[var(--accent)]/10 to-black/40 border border-[var(--accent)]/30 flex flex-col gap-2 relative overflow-hidden flex-shrink-0">
+      <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-[var(--accent)]/50 to-transparent animate-pulse" />
+      <div className="flex justify-between items-center">
+        <h4 className="text-[10px] font-mono text-[var(--accent)] uppercase font-bold flex items-center gap-1.5 shadow-[0_0_10px_rgba(59,130,246,0.3)]">
+          <Sparkles size={12} className="animate-pulse" /> NVIDIA Nemotron-3 Security Synthesis
+        </h4>
+        <button 
+          onClick={triggerSummary} 
+          disabled={loading} 
+          className="p-1 rounded bg-black/40 border border-white/5 hover:bg-white/10 text-[var(--accent)] disabled:opacity-40 transition-all shadow-[0_0_8px_rgba(59,130,246,0.2)]"
+        >
+          <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+        </button>
+      </div>
+      <p className="text-[10px] text-gray-300 font-mono leading-relaxed min-h-[30px]">
+        {summary || "Click the refresh icon to execute an active threat analysis on the current spatial mesh."}
+      </p>
     </div>
   );
 }
