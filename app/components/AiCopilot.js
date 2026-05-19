@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Sparkles, Send, Bot, User, Trash2, Cpu, Shield, Activity, RefreshCw, Layers, Compass, BarChart, Hand, Footprints, TrendingDown, PawPrint, Crosshair, Moon, Thermometer, Eye, Users, Sliders, Network } from "lucide-react";
+import { Sparkles, Send, Bot, User, Trash2, Cpu, Shield, Activity, RefreshCw, Layers, Compass, BarChart, Hand, Footprints, TrendingDown, PawPrint, Crosshair, Moon, Thermometer, Eye, Users, Sliders, Network, ClipboardList, Accessibility, BrainCircuit, Filter, Mic } from "lucide-react";
+import AgentWorkspace from "./AgentWorkspace";
 
 export default function AiCopilot({ sensing }) {
   const [activeMode, setActiveMode] = useState("chat"); // 'chat' | 'calibrate' | 'clinical'
@@ -1252,6 +1253,61 @@ TASK:
               : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white"}`}
         >
           <Network size={14} /> Fusion Engine
+        </button>
+        <button
+          onClick={() => {
+            setActiveMode("care_plan");
+          }}
+          className={`flex-none py-2 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all focus:outline-none
+            ${activeMode === "care_plan" 
+              ? "bg-orange-500 text-black shadow-[0_0_15px_rgba(249,115,22,0.3)]" 
+              : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white"}`}
+        >
+          <ClipboardList size={14} /> Care Planner
+        </button>
+        <button
+          onClick={() => {
+            setActiveMode("fall_risk_prediction");
+          }}
+          className={`flex-none py-2 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all focus:outline-none
+            ${activeMode === "fall_risk_prediction" 
+              ? "bg-teal-500 text-white shadow-[0_0_15px_rgba(20,184,166,0.3)]" 
+              : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white"}`}
+        >
+          <Accessibility size={14} /> Fall Risk Pose AI
+        </button>
+        <button
+          onClick={() => {
+            setActiveMode("sleep_disorder");
+          }}
+          className={`flex-none py-2 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all focus:outline-none
+            ${activeMode === "sleep_disorder" 
+              ? "bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.3)]" 
+              : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white"}`}
+        >
+          <BrainCircuit size={14} /> Sleep Classification
+        </button>
+        <button
+          onClick={() => {
+            setActiveMode("anomaly_filter");
+          }}
+          className={`flex-none py-2 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all focus:outline-none
+            ${activeMode === "anomaly_filter" 
+              ? "bg-fuchsia-500 text-white shadow-[0_0_15px_rgba(217,70,239,0.3)]" 
+              : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white"}`}
+        >
+          <Filter size={14} /> Anomaly Filter
+        </button>
+        <button
+          onClick={() => {
+            setActiveMode("voice_stress");
+          }}
+          className={`flex-none py-2 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all focus:outline-none
+            ${activeMode === "voice_stress" 
+              ? "bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.3)]" 
+              : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white"}`}
+        >
+          <Mic size={14} /> Voice Stress Analysis
         </button>
       </div>
 
@@ -2602,6 +2658,304 @@ TASK:
             </div>
 
           </div>
+        )}
+
+        {/* MODE 17: Automated Care Plan Generation (SOLID Implementation) */}
+        {activeMode === "care_plan" && (
+          <AgentWorkspace 
+            icon={ClipboardList}
+            title="Care AI Generator"
+            themeColor="orange"
+            buttonText="Generate Plan"
+            reportTitle="Personalized Longitudinal Care Plan"
+            reportSubtitle="Exercise • Sleep • Nutrition • Medical Routing"
+            emptyStateText="Click **Generate Plan** to let the AI analyze longitudinal vital sign trends and generate a highly personalized, structured care plan focusing on exercise, sleep hygiene, and medical follow-ups."
+            stats={[
+              { label: "Data Horizon", value: "7 Days" },
+              { label: "Risk Factors", value: "Low / Normal", color: "text-gray-300" }
+            ]}
+            visualFlair={
+              <div className="h-24 w-full bg-black/40 border border-orange-500/30 rounded-lg overflow-hidden relative flex flex-col items-center justify-center p-2">
+                <div className="flex gap-2 w-full h-full items-center justify-center">
+                  <div className="w-8 h-12 bg-orange-600/40 rounded flex flex-col p-1 justify-around shadow-[0_0_8px_rgba(249,115,22,0.2)]">
+                    <div className="w-full h-1 bg-orange-400 rounded-full animate-pulse"></div>
+                    <div className="w-3/4 h-1 bg-orange-400/50 rounded-full"></div>
+                    <div className="w-full h-1 bg-orange-400/50 rounded-full"></div>
+                  </div>
+                  <div className="w-8 h-12 bg-orange-500/50 rounded flex flex-col p-1 justify-around scale-110 shadow-[0_0_12px_rgba(249,115,22,0.4)] z-10 border border-orange-500/30">
+                    <div className="w-full h-1 bg-orange-300 rounded-full animate-[pulse_1s_ease-in-out_infinite]"></div>
+                    <div className="w-full h-1 bg-orange-300 rounded-full animate-[pulse_1.2s_ease-in-out_infinite]"></div>
+                    <div className="w-1/2 h-1 bg-orange-300 rounded-full animate-[pulse_1.5s_ease-in-out_infinite]"></div>
+                  </div>
+                  <div className="w-8 h-12 bg-orange-600/40 rounded flex flex-col p-1 justify-around shadow-[0_0_8px_rgba(249,115,22,0.2)]">
+                    <div className="w-3/4 h-1 bg-orange-400 rounded-full animate-pulse"></div>
+                    <div className="w-full h-1 bg-orange-400/50 rounded-full"></div>
+                    <div className="w-1/2 h-1 bg-orange-400/50 rounded-full"></div>
+                  </div>
+                </div>
+                <span className="text-[8px] font-mono text-orange-400/80 uppercase absolute bottom-1 right-1 font-bold">Doc Gen</span>
+              </div>
+            }
+            prompt={`
+You are an Automated Care Plan Generation AI powered by NVIDIA Nemotron-3 Super 120B.
+You analyze 7-day longitudinal health data (WiFi CSI Biometrics) to generate personalized, clinical-grade care plans.
+
+Current 7-Day Telemetry Profile:
+- Heart Rate: Stable baseline 68 BPM, slight elevation during evening hours.
+- Respiration: Normal resting, but frequent micro-wakefulness detected between 2 AM - 4 AM.
+- Activity Level: Sedentary during day (WFH), moderate activity 6 PM - 7 PM.
+
+TASK:
+Generate a structured, personalized Care Plan including:
+1. Exercise Recommendations (tailored to current sedentary behavior).
+2. Sleep Hygiene Protocol (targeting the 2 AM micro-wakefulness).
+3. Nutrition Guidance (general best practices for energy stability).
+4. Medical Follow-Up (determine if recent telemetry warrants consulting a physician).
+Make the tone empathetic, professional, and highly structured.
+            `}
+          />
+        )}
+
+        {/* MODE 18: Fall Risk Prediction with Pose Estimation */}
+        {activeMode === "fall_risk_prediction" && (
+          <AgentWorkspace 
+            icon={Accessibility}
+            title="Fall Risk AI"
+            themeColor="teal"
+            buttonText="Analyze Pose & Balance"
+            reportTitle="Micro-Stumble & Posture Degradation Analysis"
+            reportSubtitle="CSI Pose Estimation • Balance Kinematics"
+            emptyStateText="Click **Analyze Pose & Balance** to execute a simulated AI pose-estimation routine. The system will analyze WiFi CSI multi-path scattering to detect micro-stumbles and balance degradation, calculating a proactive Fall Risk Probability."
+            stats={[
+              { label: "Detected Stumbles", value: "3", color: "text-yellow-400" },
+              { label: "Gait Asymmetry", value: "+12%" },
+              { label: "CSI Resolution", value: "High (Sub-cm)" }
+            ]}
+            visualFlair={
+              <div className="h-24 w-full bg-black/40 border border-teal-500/30 rounded-lg overflow-hidden relative flex flex-col items-center justify-center p-2">
+                <div className="relative w-16 h-16 flex items-center justify-center">
+                  {/* Simulated stick-figure pose joints */}
+                  <div className="absolute top-1 w-3 h-3 rounded-full bg-teal-400 shadow-[0_0_8px_teal]"></div>
+                  <div className="absolute top-4 w-1 h-6 bg-teal-500/80 rounded-full"></div>
+                  
+                  {/* Left Arm */}
+                  <div className="absolute top-4 left-3 w-4 h-1 bg-teal-500/60 rotate-45 transform origin-right animate-pulse"></div>
+                  {/* Right Arm */}
+                  <div className="absolute top-4 right-3 w-4 h-1 bg-teal-500/60 -rotate-45 transform origin-left"></div>
+                  
+                  {/* Left Leg */}
+                  <div className="absolute top-10 left-4 w-1 h-5 bg-teal-500/80 rotate-12 transform origin-top animate-[ping_2s_infinite]"></div>
+                  {/* Right Leg (Stumbling) */}
+                  <div className="absolute top-10 right-4 w-1 h-5 bg-teal-400 rotate-[30deg] transform origin-top shadow-[0_0_10px_teal]"></div>
+
+                  {/* Floor line */}
+                  <div className="absolute bottom-0 w-20 h-px bg-teal-500/40"></div>
+                  {/* Warning zone */}
+                  <div className="absolute bottom-0 right-2 w-6 h-1 bg-yellow-500/60 rounded-full animate-pulse shadow-[0_0_5px_yellow]"></div>
+                </div>
+                <span className="text-[8px] font-mono text-teal-400/80 uppercase absolute bottom-1 left-1 font-bold">Kinematic Map</span>
+              </div>
+            }
+            prompt={`
+You are a Fall Risk AI powered by NVIDIA Nemotron-3 Super 120B.
+You specialize in evaluating spatial WiFi CSI signals to perform sub-centimeter human pose estimation and balance kinematics analysis.
+
+Current CSI Pose Data:
+- Micro-Stumbles (Past 7 Days): 3 events detected (primarily evening).
+- Gait Asymmetry: 12% drift favoring the right leg.
+- Sway Velocity: Increased by 0.4 m/s during turning motions.
+- Posture: Slight forward degradation during ambient walking.
+
+TASK:
+1. Emulate a kinematic assessment of the occupant's balance and fall risk.
+2. Calculate a "Fall Risk Probability Score" (0-100%).
+3. Detail the specific biomechanical anomalies identified (e.g., right-leg weakness, turning instability).
+4. Provide immediate preventative recommendations to mitigate a catastrophic fall.
+Output should be heavily structured, clinical, and emphasize proactive safety.
+            `}
+          />
+        )}
+
+        {/* MODE 19: Sleep Disorder Classification */}
+        {activeMode === "sleep_disorder" && (
+          <AgentWorkspace 
+            icon={BrainCircuit}
+            title="Sleep Diagnostics"
+            themeColor="indigo"
+            buttonText="Classify Apnea Events"
+            reportTitle="Nocturnal Respiratory Pattern Analysis"
+            reportSubtitle="Central vs. Obstructive Sleep Apnea Classification"
+            emptyStateText="Click **Classify Apnea Events** to analyze high-resolution nocturnal CSI biometrics (Heart Rate Variability, Respiration Flow) to determine the probability of Central vs. Obstructive Sleep Apnea."
+            stats={[
+              { label: "Apnea-Hypopnea Index", value: "22 (Moderate)", color: "text-rose-400" },
+              { label: "O2 Desat Correlation", value: "High (88%)" },
+              { label: "HRV LF/HF Ratio", value: "Elevated" }
+            ]}
+            visualFlair={
+              <div className="h-24 w-full bg-black/40 border border-indigo-500/30 rounded-lg overflow-hidden relative flex flex-col p-2">
+                <div className="absolute inset-0 grid grid-cols-[repeat(10,1fr)] grid-rows-[repeat(4,1fr)] opacity-20 pointer-events-none">
+                  {[...Array(40)].map((_, i) => (
+                    <div key={i} className="border-r border-b border-indigo-500/30"></div>
+                  ))}
+                </div>
+                
+                <div className="flex-1 flex flex-col justify-center relative">
+                  {/* Respiration wave (simulating cessation) */}
+                  <div className="w-full flex items-center">
+                    <div className="h-0.5 w-1/4 bg-indigo-400 rounded-full animate-[ping_2s_infinite] origin-left"></div>
+                    <div className="h-0.5 w-1/2 bg-rose-500/80 rounded-full animate-pulse shadow-[0_0_8px_rose]"></div>
+                    <div className="h-0.5 w-1/4 bg-indigo-400 rounded-full animate-[ping_2s_infinite] origin-right"></div>
+                  </div>
+                  {/* Small HRV spikes below */}
+                  <div className="absolute bottom-2 flex gap-1 w-full justify-around items-end opacity-70">
+                    {[3, 7, 2, 8, 4, 2, 9, 3, 5, 2, 8, 4].map((h, i) => (
+                      <div key={i} className="w-1 bg-indigo-300 rounded-t-sm" style={{ height: `${h * 2}px`, animationDelay: `${i * 0.1}s` }}></div>
+                    ))}
+                  </div>
+                </div>
+                
+                <span className="text-[8px] font-mono text-indigo-400/80 uppercase absolute bottom-1 left-1 font-bold">Respiration Cessation Detected</span>
+              </div>
+            }
+            prompt={`
+You are a Clinical Sleep Diagnostics AI powered by NVIDIA Nemotron-3 Super 120B.
+You analyze sub-carrier WiFi CSI biometrics to classify sleep disorders, specifically differentiating between Obstructive Sleep Apnea (OSA) and Central Sleep Apnea (CSA).
+
+Current Nocturnal CSI Telemetry:
+- AHI (Apnea-Hypopnea Index): 22 events per hour (Moderate severity).
+- Respiratory Effort during Cessation: High thoracic/abdominal motion detected via CSI (indicates airway obstruction rather than central neurological failure).
+- Heart Rate Variability (HRV): Sympathetic nervous system overdrive (LF/HF ratio spike) immediately following cessation events.
+- Body Position: 70% of events occur in the supine (back-sleeping) position.
+
+TASK:
+1. Analyze the correlation between respiratory cessation and thoracic effort to classify the primary type of apnea (OSA vs. CSA).
+2. Explain the physiological mechanism behind the classification based on the CSI data.
+3. Detail the cardiovascular risk associated with the observed HRV sympathetic overdrive.
+4. Provide structured, actionable clinical recommendations (e.g., positional therapy, CPAP consultation).
+            `}
+          />
+        )}
+
+        {/* MODE 20: False-Positive Anomaly Reduction Filter */}
+        {activeMode === "anomaly_filter" && (
+          <AgentWorkspace 
+            icon={Filter}
+            title="Anomaly Filter AI"
+            themeColor="fuchsia"
+            buttonText="Scrub False Positives"
+            reportTitle="Environmental Context & Noise Reduction"
+            reportSubtitle="CSI Profile Verification • Alert Confidence Scoring"
+            emptyStateText="Click **Scrub False Positives** to run a deep contextual scan over the recent anomaly alerts. The AI compares kinematic CSI signatures against known environmental interference patterns (pets, appliances) to filter out noise."
+            stats={[
+              { label: "Pending Alerts", value: "4 Detected", color: "text-rose-400" },
+              { label: "Confidence Threshold", value: "95%" },
+              { label: "Current Noise Floor", value: "Moderate (-82dBm)" }
+            ]}
+            visualFlair={
+              <div className="h-24 w-full bg-black/40 border border-fuchsia-500/30 rounded-lg overflow-hidden relative flex flex-col p-2 items-center justify-center">
+                
+                {/* Simulated filtering funnel */}
+                <div className="w-full max-w-[120px] h-16 flex flex-col items-center justify-between relative z-10">
+                  <div className="w-full h-2 bg-fuchsia-500/40 rounded-full flex justify-around items-center px-1">
+                    <div className="w-1 h-1 bg-red-400 rounded-full animate-ping"></div>
+                    <div className="w-1 h-1 bg-green-400 rounded-full"></div>
+                    <div className="w-1 h-1 bg-red-400 rounded-full animate-ping" style={{ animationDelay: '0.5s' }}></div>
+                    <div className="w-1 h-1 bg-red-400 rounded-full animate-ping" style={{ animationDelay: '1s' }}></div>
+                    <div className="w-1 h-1 bg-green-400 rounded-full"></div>
+                  </div>
+                  
+                  {/* Funnel body */}
+                  <div className="w-3/4 h-8 border-l-2 border-r-2 border-fuchsia-500/30 flex items-center justify-center">
+                    <div className="w-full h-px bg-fuchsia-500/50 shadow-[0_0_8px_fuchsia] animate-[pulse_0.5s_infinite]"></div>
+                  </div>
+
+                  <div className="w-1/3 h-2 bg-fuchsia-500/80 rounded-full shadow-[0_0_10px_fuchsia] flex justify-around items-center">
+                     <div className="w-1.5 h-1.5 bg-green-400 rounded-full shadow-[0_0_5px_#4ade80]"></div>
+                     <div className="w-1.5 h-1.5 bg-green-400 rounded-full shadow-[0_0_5px_#4ade80]"></div>
+                  </div>
+                </div>
+
+                <span className="text-[8px] font-mono text-fuchsia-400/80 uppercase absolute bottom-1 left-1 font-bold">Signal Scrubber</span>
+              </div>
+            }
+            prompt={`
+You are an Anomaly Reduction Filter AI powered by NVIDIA Nemotron-3 Super 120B.
+Your task is to analyze 4 recent "Intrusion/Fall" alerts flagged by the base CSI heuristic engine and determine if they are genuine emergencies or false positives caused by environmental noise.
+
+Recent Anomaly Signatures:
+1. Alert 1 (14:02) - Low-to-ground high-speed movement (Speed: 0.8 m/s, Height: 0.2m).
+2. Alert 2 (14:15) - Erratic, non-human periodic pacing pattern localized to the kitchen.
+3. Alert 3 (18:40) - Sudden massive multipath variance matching a human-sized mass dropping in the living room.
+4. Alert 4 (19:10) - Rhythmic mechanical vibration traversing the hallway.
+
+TASK:
+1. Evaluate the kinematic signatures (Height, Speed, Periodicity, Mass equivalent via attenuation) of each alert.
+2. Cross-reference with common false positives (e.g., Roombas, Pets, Ceiling Fans).
+3. Classify each alert as "CONFIRMED FALSE POSITIVE" or "HIGH CONFIDENCE THREAT".
+4. Output a revised Security/Health Alert Log that drastically reduces the false-alarm fatigue for the end user.
+            `}
+          />
+        )}
+
+        {/* MODE 21: Voice Stress Analysis */}
+        {activeMode === "voice_stress" && (
+          <AgentWorkspace 
+            icon={Mic}
+            title="Voice Stress & Acoustic Profiler"
+            themeColor="rose"
+            buttonText="Analyze Vocal Telemetry"
+            reportTitle="Acoustic Distress & Cardiac Stress Evaluation"
+            reportSubtitle="Vocal Tremor Frequency (Hz) • Fundamental Frequency (F0) Tracking"
+            emptyStateText="Click **Analyze Vocal Telemetry** to capture or simulate high-resolution vocal features. The AI evaluates pitch jitter, shimmer, and vocal tremors to index autonomic nervous system load and emotional or physical distress."
+            stats={[
+              { label: "Stress Index", value: "Elevated (7.2/10)", color: "text-rose-400" },
+              { label: "Vocal Tremor Rate", value: "6.8 Hz (High)" },
+              { label: "Pitch Jitter", value: "1.45% (Irregular)" }
+            ]}
+            visualFlair={
+              <div className="h-24 w-full bg-black/40 border border-rose-500/30 rounded-lg overflow-hidden relative flex flex-col p-2">
+                <div className="absolute inset-0 grid grid-cols-[repeat(15,1fr)] opacity-10 pointer-events-none">
+                  {[...Array(15)].map((_, i) => (
+                    <div key={i} className="border-r border-rose-500/30 h-full"></div>
+                  ))}
+                </div>
+                
+                <div className="flex-1 flex items-center justify-center gap-1">
+                  {/* Glowing dynamic acoustic equalizer */}
+                  {[4, 8, 3, 9, 6, 2, 7, 5, 8, 4, 9, 3, 6, 8, 2, 9, 5].map((h, i) => (
+                    <div 
+                      key={i} 
+                      className="w-1.5 bg-rose-500 rounded-full animate-pulse shadow-[0_0_8px_rose]"
+                      style={{ 
+                        height: `${h * 7}%`, 
+                        animationDuration: `${0.4 + (i % 3) * 0.2}s`,
+                        animationDelay: `${i * 0.05}s`
+                      }}
+                    ></div>
+                  ))}
+                </div>
+                
+                <span className="text-[8px] font-mono text-rose-400/80 uppercase absolute bottom-1 left-1 font-bold">Autonomic Stress Spikes Detected</span>
+              </div>
+            }
+            prompt={`
+You are an Acoustic Distress & Voice Stress AI powered by NVIDIA Nemotron-3 Super 120B.
+Your task is to analyze biometric vocal parameters captured during an occupant's verbal query and correlate them with WiFi CSI spatial heart/respiration metrics for a multi-modal assessment.
+
+Acoustic Features:
+- Fundamental Frequency (F0): 242 Hz (normal baseline: 180-210 Hz, indicating acute vocal cord tension).
+- Jitter (pitch instability): 1.45% (Elevated autonomic activation).
+- Shimmer (amplitude perturbation): 4.2% (Moderate vocal tremor).
+- Respiration Pause Rate: Gasps every 4-5 words (correlates with WiFi phase respiration dips).
+- Autonomic Index: Significant high-frequency tremor indicating sympathetic nervous system activation.
+
+TASK:
+1. Explain the physiological link between autonomous nervous system (ANS) stress and the vocal tension observed in the pitch instability.
+2. Cross-reference acoustic tremors with respiratory gasp rates to identify signs of physical distress (such as dyspnea or cardiac hyper-activation).
+3. Deliver a clinical-grade Multi-Modal Autonomic Distress Index Report.
+4. Suggest direct wellness and safety interventions (e.g., box breathing coaching, hydration, or medical evaluation if secondary CSI vitals spike).
+            `}
+          />
         )}
 
       </div>

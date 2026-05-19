@@ -700,6 +700,26 @@ export function useWifiSensing() {
     setMode("local-simulation");
     setSnnConfig({ input: SNN_INPUT, hidden: SNN_HIDDEN, output: SNN_OUTPUT, labels: OUTPUT_LABELS });
     
+    // Seed high-fidelity mock data for offline/local simulation dashboard experience
+    const initialOccupants = [
+      { id: "person-1", name: "Sachin (Self)", relationship: "Family", contactInfo: "+91 98765 43210", gender: "Male", healthStatus: "Normal Vitals", age: 28, targetBpm: 72, notes: "Primary resident. Monitored for baseline sleep-cycle calibration." },
+      { id: "person-2", name: "Priya (Spouse)", relationship: "Family", contactInfo: "+91 98765 43211", gender: "Female", healthStatus: "Pregnancy Vitals Monitoring", age: 26, targetBpm: 78, notes: "Requiring constant heart rate and respiration phase checks." },
+      { id: "person-3", name: "Rohan (Son)", relationship: "Family", contactInfo: "+91 98765 43212", gender: "Male", healthStatus: "Normal Vitals", age: 5, targetBpm: 90, notes: "Highly dynamic Doppler blip, active play periods." },
+      { id: "person-4", name: "Amit (Friend)", relationship: "Friend", contactInfo: "+91 98765 43213", gender: "Male", healthStatus: "Normal Vitals", age: 29, targetBpm: 75, notes: "Regular weekend visitor." },
+      { id: "person-5", name: "Dr. Sharma", relationship: "Relative", contactInfo: "+91 98765 43214", gender: "Male", healthStatus: "Normal Vitals", age: 55, targetBpm: 68, notes: "Emergency medical contact. Whitelisted access." }
+    ];
+    setOccupants(initialOccupants);
+
+    setHealthAlerts([
+      { id: 1, occupant_name: "Priya (Spouse)", msg: "Pregnancy Vitals Check: Heart rate elevated to 94 BPM during mild movement.", time: "10:15 AM", type: "alert" },
+      { id: 2, occupant_name: "Sachin (Self)", msg: "Positional Supine Apnea Trend: Moderate respiratory dip classified at 03:40 AM.", time: "03:40 AM", type: "info" }
+    ]);
+
+    setHealthSummaries([
+      { id: 1, occupant_name: "Sachin (Self)", summary: "Consistent 8.2h sleep profile with mild supine obstruction. Sympathetic recovery is normal." },
+      { id: 2, occupant_name: "Priya (Spouse)", summary: "Vitals stable. Mild gestational sinus tachycardia noted during active phases, baseline is perfect." }
+    ]);
+
     initLocalSNN();
     generateLocalNetworks();
     
