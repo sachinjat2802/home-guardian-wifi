@@ -2015,7 +2015,7 @@ TASK:
                   <div className="h-full flex flex-col items-center justify-center text-center gap-2 p-8">
                     <Crosshair size={36} className="text-red-500/40 animate-pulse" />
                     <p className="text-[10px] font-mono text-[var(--text-muted)] max-w-sm leading-normal">
-                      Click **Predict Trajectory** to lock onto active targets. The AI will calculate trajectory interpolation vectors to predict the intruder's exact target room and automatically formulate a smart-home countermeasure strategy.
+                      Click **Predict Trajectory** to lock onto active targets. The AI will calculate trajectory interpolation vectors to predict the intruder&apos;s exact target room and automatically formulate a smart-home countermeasure strategy.
                     </p>
                   </div>
                 )}
@@ -2650,7 +2650,7 @@ TASK:
                   <div className="h-full flex flex-col items-center justify-center text-center gap-2 p-8">
                     <Network size={36} className="text-violet-500/40 animate-pulse" />
                     <p className="text-[10px] font-mono text-[var(--text-muted)] max-w-sm leading-normal">
-                      Click **Run Fusion** to correlate WiFi CSI spatial behavior with ambient environmental telemetry. The AI utilizes transformer models to fuse vital signs with temperature, humidity, and AQI data, providing deep, holistic insights into how the environment is impacting the occupant's health.
+                      Click **Run Fusion** to correlate WiFi CSI spatial behavior with ambient environmental telemetry. The AI utilizes transformer models to fuse vital signs with temperature, humidity, and AQI data, providing deep, holistic insights into how the environment is impacting the occupant&apos;s health.
                     </p>
                   </div>
                 )}
@@ -2767,7 +2767,7 @@ Current CSI Pose Data:
 - Posture: Slight forward degradation during ambient walking.
 
 TASK:
-1. Emulate a kinematic assessment of the occupant's balance and fall risk.
+1. Emulate a kinematic assessment of the occupant&apos;s balance and fall risk.
 2. Calculate a "Fall Risk Probability Score" (0-100%).
 3. Detail the specific biomechanical anomalies identified (e.g., right-leg weakness, turning instability).
 4. Provide immediate preventative recommendations to mitigate a catastrophic fall.
@@ -2940,7 +2940,7 @@ TASK:
             }
             prompt={`
 You are an Acoustic Distress & Voice Stress AI powered by NVIDIA Nemotron-3 Super 120B.
-Your task is to analyze biometric vocal parameters captured during an occupant's verbal query and correlate them with WiFi CSI spatial heart/respiration metrics for a multi-modal assessment.
+Your task is to analyze biometric vocal parameters captured during an occupant&apos;s verbal query and correlate them with WiFi CSI spatial heart/respiration metrics for a multi-modal assessment.
 
 Acoustic Features:
 - Fundamental Frequency (F0): 242 Hz (normal baseline: 180-210 Hz, indicating acute vocal cord tension).

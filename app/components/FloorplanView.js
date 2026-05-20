@@ -419,7 +419,7 @@ export default function FloorplanView({ analysis }) {
                         <div 
                           className="w-1 h-6 bg-gradient-to-t from-orange-500 to-transparent absolute rounded origin-bottom"
                           style={{
-                            transform: `rotateZ(${idx * 90 + (Date.now() / 1500) * 45}deg)`,
+                            transform: `rotateZ(${idx * 90}deg)`,
                           }}
                         />
                       </div>
