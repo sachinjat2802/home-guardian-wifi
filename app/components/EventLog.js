@@ -5,9 +5,25 @@ export default function EventLog({ events }) {
   const icons = { info: Info, sleep: Moon, system: Shield, alert: AlertTriangle };
   const borderColors = { info: "var(--accent)", sleep: "var(--purple)", system: "var(--success)", alert: "var(--warning)" };
 
+
+  const handleExport = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(events, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "event_log.json");
+    document.body.appendChild(downloadAnchorNode); // required for firefox
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
   return (
     <section className="glass p-5 rounded-xl flex-1 flex flex-col min-h-0 overflow-hidden">
-      <h3 className="text-sm font-semibold mb-3">Event Log</h3>
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="text-sm font-semibold">Event Log</h3>
+        <button onClick={handleExport} className="text-[10px] bg-white/5 hover:bg-white/10 px-2 py-1 rounded transition-colors text-gray-300">
+          Export JSON
+        </button>
+      </div>
       <div className="flex flex-col gap-2 overflow-y-auto flex-1">
         {events.length === 0 && <p className="text-xs text-[var(--text-muted)] text-center py-4">No events yet</p>}
         {events.slice(0, 20).map((event) => {

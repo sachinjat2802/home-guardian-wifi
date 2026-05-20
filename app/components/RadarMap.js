@@ -7,17 +7,17 @@ export default function RadarMap({ telemetry, analysis, selectedEntityId, onSele
   const entities = analysis?.entities || [];
   const security = analysis?.security || {};
   const [trails, setTrails] = useState({});
-
   useEffect(() => {
     if (!entities || entities.length === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTrails(prev => {
       const newTrails = { ...prev };
       entities.forEach(e => {
         if (!newTrails[e.id]) newTrails[e.id] = [];
         const lastPos = newTrails[e.id][newTrails[e.id].length - 1];
         if (!lastPos || Math.abs(lastPos.x - e.x) > 0.5 || Math.abs(lastPos.y - e.y) > 0.5) {
-          newTrails[e.id].push({ x: e.x, y: e.y, time: Date.now() });
-          if (newTrails[e.id].length > 20) newTrails[e.id].shift();
+          newTrails[e.id] = [...newTrails[e.id], { x: e.x, y: e.y, time: telemetry?.timestamp || 0 }];
+          if (newTrails[e.id].length > 20) newTrails[e.id] = newTrails[e.id].slice(1);
         }
       });
       Object.keys(newTrails).forEach(id => {
@@ -25,6 +25,7 @@ export default function RadarMap({ telemetry, analysis, selectedEntityId, onSele
       });
       return newTrails;
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entities]);
 
   // Helper to choose the right icon

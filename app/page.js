@@ -30,6 +30,22 @@ export default function Home() {
   const isTriggered = security.triggered;
 
   // Apply active theme class to document body to trigger dynamic variables
+  const [sirenEnabled, setSirenEnabled] = useState(false);
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && !audioRef.current) {
+      audioRef.current = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
+      audioRef.current.loop = true;
+    }
+    if (security.triggered && sirenEnabled && audioRef.current) {
+      audioRef.current.play().catch(e => console.log('Audio play failed:', e));
+    } else if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  }, [security.triggered, sirenEnabled]);
+
   useEffect(() => {
     const classes = ["theme-classic", "theme-space", "theme-cyberpunk", "theme-aurora", "theme-polar"];
     classes.forEach(c => document.body.classList.remove(c));
@@ -439,18 +455,15 @@ function MqttIntegratorPanel({ sensing }) {
 
   // Keep state variables synchronized when MQTT analysis updates
   useEffect(() => {
-    setHost(activeMqtt?.host ?? "mqtt://192.168.1.150:1883");
-    setTopic(activeMqtt?.topic ?? "home/guardian");
-    setPublishOccupancy(activeMqtt?.publishOccupancy ?? true);
-    setPublishVitals(activeMqtt?.publishVitals ?? true);
-    setPublishAlerts(activeMqtt?.publishAlerts ?? true);
-  }, [
-    activeMqtt?.host,
-    activeMqtt?.topic,
-    activeMqtt?.publishOccupancy,
-    activeMqtt?.publishVitals,
-    activeMqtt?.publishAlerts
-  ]);
+    if (activeMqtt) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setHost(activeMqtt.host ?? "mqtt://192.168.1.150:1883");
+      setTopic(activeMqtt.topic ?? "home/guardian");
+      setPublishOccupancy(activeMqtt.publishOccupancy ?? true);
+      setPublishVitals(activeMqtt.publishVitals ?? true);
+      setPublishAlerts(activeMqtt.publishAlerts ?? true);
+    }
+  }, [activeMqtt]);
 
   const handleSave = () => {
     sensing.configureMqtt({

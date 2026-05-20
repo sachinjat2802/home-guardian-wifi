@@ -180,7 +180,7 @@ export default function OccupantsRegistry({ sensing }) {
                   </div>
                   {occ.notes && (
                     <div className="mt-2 p-2 bg-black/40 rounded border border-white/5 text-[9px] text-gray-400 italic">
-                      "{occ.notes}"
+                      &quot;{occ.notes}&quot;
                     </div>
                   )}
                 </div>

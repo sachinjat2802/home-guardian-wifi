@@ -88,7 +88,7 @@ export async function getDb() {
 export async function insertTelemetry(data) {
   const db = await getDb();
   await db.run(
-    \`INSERT INTO telemetry (timestamp, frame, signal, baseline, motion, severity, mode, rssi) VALUES (?, ?, ?, ?, ?, ?, ?, ?)\`,
+    `INSERT INTO telemetry (timestamp, frame, signal, baseline, motion, severity, mode, rssi) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [data.timestamp, data.frame, data.signal, data.baseline, data.motion ? 1 : 0, data.severity, data.mode, data.rssi]
   );
 }
@@ -96,7 +96,7 @@ export async function insertTelemetry(data) {
 export async function insertEntities(timestamp, entities) {
   const db = await getDb();
   const stmt = await db.prepare(
-    \`INSERT INTO entities (timestamp, entity_id, name, type, confidence, heart_rate, breathing_rate, hrv, temp, spo2, sleep_stage, age, gait_speed, body_density, status, x, y) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\`
+    `INSERT INTO entities (timestamp, entity_id, name, type, confidence, heart_rate, breathing_rate, hrv, temp, spo2, sleep_stage, age, gait_speed, body_density, status, x, y) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   
   for (const entity of entities) {
@@ -126,7 +126,7 @@ export async function insertEntities(timestamp, entities) {
 export async function insertVitals(timestamp, vitals) {
   const db = await getDb();
   await db.run(
-    \`INSERT INTO vitals (timestamp, presence, presence_score, motion_energy, breathing_rate, heart_rate, hrv, temp, spo2, n_persons, fall) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\`,
+    `INSERT INTO vitals (timestamp, presence, presence_score, motion_energy, breathing_rate, heart_rate, hrv, temp, spo2, n_persons, fall) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       timestamp,
       vitals.presence ? 1 : 0,
@@ -146,7 +146,7 @@ export async function insertVitals(timestamp, vitals) {
 export async function insertSecurityEvent(timestamp, security) {
   const db = await getDb();
   await db.run(
-    \`INSERT INTO security_events (timestamp, armed, triggered, reason, preset) VALUES (?, ?, ?, ?, ?)\`,
+    `INSERT INTO security_events (timestamp, armed, triggered, reason, preset) VALUES (?, ?, ?, ?, ?)`,
     [timestamp, security.armed ? 1 : 0, security.triggered ? 1 : 0, security.reason || '', security.preset || '']
   );
 }
@@ -154,7 +154,7 @@ export async function insertSecurityEvent(timestamp, security) {
 export async function insertMqttLog(timestamp, topic, payload) {
   const db = await getDb();
   await db.run(
-    \`INSERT INTO mqtt_logs (timestamp, topic, payload) VALUES (?, ?, ?)\`,
+    `INSERT INTO mqtt_logs (timestamp, topic, payload) VALUES (?, ?, ?)`,
     [timestamp, topic, payload]
   );
 }
