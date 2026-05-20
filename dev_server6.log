@@ -1,0 +1,22 @@
+
+> wifi-guardian@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+✓ Ready in 531ms
+🚀 [Sensing Engine] Initializing Next.js-Style RuView Sensing Pipeline...
+🔌 [Sensing Engine] WebSocket Server listening on ws://localhost:8080
+
+💾 [Database] SQLite DB initialized successfully at /app/wifi_guardian.db
+💾 [Database] SQLite DB initialized successfully at /app/wifi_guardian.db
+💾 [Sensing Engine] Loaded ${state.occupantProfiles.length} occupant profiles from SQLite DB
+📊 [Analytics] Tables initialized.
+📊 [Analytics] Pattern tracking loops started (snapshots: 30s, summaries: 5min).
+📊 [Sensing Engine] Analytics & pattern tracking integrated.
+ GET / 200 in 579ms (next.js: 265ms, application-code: 315ms)
+📊 [Analytics] Daily summaries computed for 17 occupants.
+📊 [Analytics] Daily summaries computed for 17 occupants.
+📊 [Analytics] Daily summaries computed for 17 occupants.
+📊 [Analytics] Daily summaries computed for 17 occupants.

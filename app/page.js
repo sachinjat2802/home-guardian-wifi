@@ -229,7 +229,7 @@ function Header({ sensing, soundEnabled, setSoundEnabled, theme, setTheme }) {
             <select
               value={sensing.mode}
               onChange={(e) => sensing.changeMode(e.target.value)}
-              disabled={sensing.mode === "local-simulation"}
+
               className="bg-black/40 border border-[var(--border-glass)] px-3 py-1.5 rounded-full text-[10px] font-mono text-[var(--cyan)] font-bold focus:outline-none cursor-pointer hover:border-[var(--cyan)]/50 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <option value="simulation">📡 SIMULATION</option>

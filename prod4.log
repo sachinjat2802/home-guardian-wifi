@@ -1,0 +1,10 @@
+
+> wifi-guardian@0.1.0 start
+> next start
+
+▲ Next.js 16.2.6
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+✓ Ready in 196ms
+Error: "next start" does not work with "output: export" configuration. Use "npx serve@latest out" instead.
+    at ignore-listed frames
