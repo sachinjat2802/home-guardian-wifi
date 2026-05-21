@@ -62,7 +62,7 @@ export default function Home() {
             audioCtxRef.current = new AudioContextClass();
           }
         }
-        
+
         const ctx = audioCtxRef.current;
         if (ctx) {
           if (ctx.state === "suspended") {
@@ -107,7 +107,7 @@ export default function Home() {
         try {
           oscRef.current.stop();
           modRef.current.stop();
-        } catch (e) {}
+        } catch (e) { }
         oscRef.current = null;
         modRef.current = null;
       }
@@ -118,7 +118,7 @@ export default function Home() {
         try {
           oscRef.current.stop();
           modRef.current.stop();
-        } catch (e) {}
+        } catch (e) { }
         oscRef.current = null;
         modRef.current = null;
       }
@@ -129,44 +129,44 @@ export default function Home() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
-      
+
       {/* Visual threat warning boundary flashing overlay */}
       {isTriggered && (
         <div className="fixed inset-0 border-[6px] border-[var(--danger)] animate-pulse pointer-events-none z-50 bg-[var(--danger)]/[0.04]" />
       )}
 
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} connected={sensing.connected} mode={sensing.mode} />
-      
+
       <main className="flex-1 p-4 pl-2 pb-20 md:pb-4 overflow-y-auto flex flex-col gap-4">
-        <Header 
-          sensing={sensing} 
-          soundEnabled={soundEnabled} 
-          setSoundEnabled={setSoundEnabled} 
-          theme={theme} 
-          setTheme={setTheme} 
+        <Header
+          sensing={sensing}
+          soundEnabled={soundEnabled}
+          setSoundEnabled={setSoundEnabled}
+          theme={theme}
+          setTheme={setTheme}
         />
-        
+
         {activeTab === "dashboard" && (
-          <DashboardView 
-            sensing={sensing} 
-            selectedEntityId={selectedEntityId} 
-            setSelectedEntityId={setSelectedEntityId} 
+          <DashboardView
+            sensing={sensing}
+            selectedEntityId={selectedEntityId}
+            setSelectedEntityId={setSelectedEntityId}
             theme={theme}
           />
         )}
         {activeTab === "floorplan" && <FloorplanView analysis={sensing.analysis} />}
         {activeTab === "spectrum" && <SpectrumView analysis={sensing.analysis} />}
         {activeTab === "networks" && (
-          <NetworkScanner 
-            networks={sensing.networks} 
-            requestScan={sensing.requestScan} 
-            connectedNetwork={sensing.connectedNetwork} 
+          <NetworkScanner
+            networks={sensing.networks}
+            requestScan={sensing.requestScan}
+            connectedNetwork={sensing.connectedNetwork}
           />
         )}
         {activeTab === "vitals" && (
-          <VitalsPanel 
-            analysis={sensing.analysis} 
-            signalHistory={sensing.signalHistory} 
+          <VitalsPanel
+            analysis={sensing.analysis}
+            signalHistory={sensing.signalHistory}
             selectedEntityId={selectedEntityId}
             onSelectEntity={setSelectedEntityId}
           />
@@ -174,8 +174,8 @@ export default function Home() {
         {activeTab === "snn" && <SnnPanel analysis={sensing.analysis} snnConfig={sensing.snnConfig} />}
         {activeTab === "occupants" && <OccupantsRegistry sensing={sensing} />}
         {activeTab === "security" && <SecurityView sensing={sensing} soundEnabled={soundEnabled} setSoundEnabled={setSoundEnabled} />}
-        {activeTab === "ai-copilot" && <AiCopilot sensing={sensing} />}
       </main>
+      <AiCopilot sensing={sensing} />
     </div>
   );
 }
@@ -210,13 +210,12 @@ function Header({ sensing, soundEnabled, setSoundEnabled, theme, setTheme }) {
 
         {/* Siren sound control indicator */}
         {security.triggered && (
-          <button 
+          <button
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className={`p-1.5 rounded-lg border flex items-center justify-center transition-all ${
-              soundEnabled 
-                ? "bg-[var(--danger)]/15 border-[var(--danger)]/30 text-[var(--danger)] animate-bounce" 
-                : "bg-white/5 border-white/5 text-gray-500"
-            }`}
+            className={`p-1.5 rounded-lg border flex items-center justify-center transition-all ${soundEnabled
+              ? "bg-[var(--danger)]/15 border-[var(--danger)]/30 text-[var(--danger)] animate-bounce"
+              : "bg-white/5 border-white/5 text-gray-500"
+              }`}
             title={soundEnabled ? "Mute Siren Alarm" : "Unmute Siren Alarm"}
           >
             {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
@@ -245,7 +244,7 @@ function Header({ sensing, soundEnabled, setSoundEnabled, theme, setTheme }) {
             OFFLINE
           </div>
         )}
-        
+
         {sensing.connectedNetwork && (
           <div className="text-[10px] font-mono text-[var(--text-secondary)] glass px-3 py-1.5 rounded-full border border-[var(--border-glass)]">
             {sensing.connectedNetwork.ssid} • Ch {sensing.connectedNetwork.channel} • {sensing.telemetry?.signal !== undefined ? `${sensing.telemetry.signal}%` : "N/A"}
@@ -264,12 +263,12 @@ function DashboardView({ sensing, selectedEntityId, setSelectedEntityId, theme }
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[2.5fr_1fr] gap-4 flex-1 min-h-0">
       <div className="flex flex-col gap-4 min-h-0">
-        
+
         {/* Upper radar console and 3D pose fusion panel */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <RadarMap 
-            telemetry={sensing.telemetry} 
-            analysis={sensing.analysis} 
+          <RadarMap
+            telemetry={sensing.telemetry}
+            analysis={sensing.analysis}
             selectedEntityId={effectiveSelectedEntityId}
             onSelectEntity={setSelectedEntityId}
             theme={theme}
@@ -285,7 +284,7 @@ function DashboardView({ sensing, selectedEntityId, setSelectedEntityId, theme }
           <StatCard label="Phase Respiration" value={selectedEntity?.type !== 'appliance' ? `${selectedEntity?.vitals?.breathingRate || 0} RPM` : "N/A"} sub={selectedEntity ? `Lock: ${selectedEntity.name}` : "Global average"} color="var(--purple)" />
         </div>
       </div>
-      
+
       {/* Right side analytics column */}
       <div className="flex flex-col gap-4 min-h-0 overflow-hidden">
         <AiThreatSummaryWidget sensing={sensing} />
@@ -299,7 +298,7 @@ function DashboardView({ sensing, selectedEntityId, setSelectedEntityId, theme }
 function SecurityView({ sensing, soundEnabled, setSoundEnabled }) {
   const security = sensing.analysis?.security || {};
   const entities = sensing.analysis?.entities || [];
-  
+
   return (
     <div className="glass p-5 rounded-2xl flex-1 flex flex-col gap-5 bg-white/[0.01]">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[var(--border-glass)] pb-3">
@@ -309,8 +308,8 @@ function SecurityView({ sensing, soundEnabled, setSoundEnabled }) {
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
           {/* Preset switch dropdown */}
-          <select 
-            value={security.preset || "residential"} 
+          <select
+            value={security.preset || "residential"}
             onChange={(e) => sensing.changePreset(e.target.value)}
             className="bg-black/60 border border-[var(--border-glass)] px-3 py-1.5 rounded-lg text-xs font-mono text-cyan-400 focus:outline-none min-h-[38px] cursor-pointer"
           >
@@ -339,24 +338,22 @@ function SecurityView({ sensing, soundEnabled, setSoundEnabled }) {
               {security.armed ? "ARMED WATCH" : "DISARMED"}
             </span>
           </div>
-          <button 
+          <button
             onClick={security.armed ? sensing.disarmSecurity : sensing.armSecurity}
-            className={`w-full py-1.5 rounded-lg text-xs font-bold transition-all border ${
-              security.armed 
-                ? "bg-red-500/15 border-red-500/30 text-red-400 hover:bg-red-500/25" 
-                : "bg-cyan-500/10 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20"
-            }`}
+            className={`w-full py-1.5 rounded-lg text-xs font-bold transition-all border ${security.armed
+              ? "bg-red-500/15 border-red-500/30 text-red-400 hover:bg-red-500/25"
+              : "bg-cyan-500/10 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20"
+              }`}
           >
             {security.armed ? "Disarm Perimeter" : "Arm Perimeter"}
           </button>
         </div>
 
         {/* Alarm status card */}
-        <div className={`glass p-4 rounded-xl flex flex-col justify-between min-h-[120px] transition-all border ${
-          security.triggered 
-            ? "bg-red-500/10 border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.15)] animate-pulse" 
-            : "bg-black/20"
-        }`}>
+        <div className={`glass p-4 rounded-xl flex flex-col justify-between min-h-[120px] transition-all border ${security.triggered
+          ? "bg-red-500/10 border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.15)] animate-pulse"
+          : "bg-black/20"
+          }`}>
           <div>
             <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider block font-mono">Intrusion Alarm</span>
             <span className={`text-xl font-bold font-mono tracking-wide ${security.triggered ? "text-red-400" : "text-emerald-400"}`}>
@@ -364,7 +361,7 @@ function SecurityView({ sensing, soundEnabled, setSoundEnabled }) {
             </span>
           </div>
           {security.triggered && (
-            <button 
+            <button
               onClick={sensing.disarmSecurity}
               className="w-full py-1.5 bg-red-950/40 border border-red-500/30 hover:bg-red-950/60 text-red-400 rounded-lg text-xs font-mono"
             >
@@ -381,7 +378,7 @@ function SecurityView({ sensing, soundEnabled, setSoundEnabled }) {
               {soundEnabled ? "Siren Alert Enabled" : "Silent Alert"}
             </span>
           </div>
-          <button 
+          <button
             onClick={() => setSoundEnabled(!soundEnabled)}
             className="w-full py-1.5 bg-white/5 border border-white/5 hover:bg-white/10 text-gray-300 rounded-lg text-xs font-semibold transition-all"
           >
@@ -484,11 +481,10 @@ function MqttIntegratorPanel({ sensing }) {
         </div>
         <button
           onClick={() => sensing.toggleMqtt(!mqtt.connected)}
-          className={`px-2.5 py-1 rounded text-[9px] font-bold font-mono transition-all border ${
-            mqtt.connected
-              ? "bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20"
-              : "bg-cyan-500/10 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20"
-          }`}
+          className={`px-2.5 py-1 rounded text-[9px] font-bold font-mono transition-all border ${mqtt.connected
+            ? "bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20"
+            : "bg-cyan-500/10 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20"
+            }`}
         >
           {mqtt.connected ? "DISCONNECT" : "CONNECT"}
         </button>
@@ -608,7 +604,7 @@ function StatCard({ label, value, sub, color }) {
 function AiThreatSummaryWidget({ sensing }) {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
-  
+
   const entities = sensing.analysis?.entities || [];
   const triggerSummary = async () => {
     setLoading(true);
@@ -619,7 +615,7 @@ Overall Motion Energy: ${sensing.analysis?.vitals?.motionEnergy || 0}
 SNN Spiking Activity: ${sensing.analysis?.snn?.spikes || 0}
 
 Prompt: Write a strict maximum 2-sentence highly professional AI Security & Biometric Threat Assessment based on the above raw telemetry. Output ONLY the summary.`;
-    
+
     try {
       const response = await fetch("/api/ai", {
         method: "POST",
@@ -649,9 +645,9 @@ Prompt: Write a strict maximum 2-sentence highly professional AI Security & Biom
         <h4 className="text-[10px] font-mono text-[var(--accent)] uppercase font-bold flex items-center gap-1.5 shadow-[0_0_10px_rgba(59,130,246,0.3)]">
           <Sparkles size={12} className="animate-pulse" /> NVIDIA Nemotron-3 Security Synthesis
         </h4>
-        <button 
-          onClick={triggerSummary} 
-          disabled={loading} 
+        <button
+          onClick={triggerSummary}
+          disabled={loading}
           className="p-1 rounded bg-black/40 border border-white/5 hover:bg-white/10 text-[var(--accent)] disabled:opacity-40 transition-all shadow-[0_0_8px_rgba(59,130,246,0.2)]"
         >
           <RefreshCw size={12} className={loading ? "animate-spin" : ""} />

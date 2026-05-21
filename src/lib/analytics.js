@@ -83,25 +83,94 @@ export async function initAnalyticsTables() {
 }
 
 // ─── Vital Snapshot Writer ────────────────────────────────────────────
-export async function saveVitalSnapshots(entities) {
-  if (!entities || entities.length === 0) return;
-  try {
-    const db = await getDB();
-    const now = Date.now();
-    for (const e of entities) {
-      if (!e.vitals) continue;
-      await db.run(
-        `INSERT INTO vital_snapshots (occupant_id, heart_rate, breathing_rate, hrv, temp, spo2, sleep_stage, activity_status, motion_energy, x, y, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [e.id, e.vitals.heartRate, e.vitals.breathingRate, e.vitals.hrv,
-         e.vitals.temp, e.vitals.spo2, e.vitals.sleepStage || null,
-         e.status, 0, e.x, e.y, now]
-      );
+let analyticsWriteLock = false;
+
+function withAnalyticsWriteLock(fn) {
+  return (async () => {
+    // Prevent overlapping analytics ticks causing concurrent writes.
+    if (analyticsWriteLock) return;
+    analyticsWriteLock = true;
+    try {
+      return await fn();
+    } finally {
+      analyticsWriteLock = false;
     }
-  } catch (err) {
-    console.error("❌ [Analytics] Snapshot save error:", err.message);
+  })();
+}
+
+async function runSerializedWrites(db, fn) {
+  // Keep transactions short to reduce WAL growth and contention.
+  await db.exec('BEGIN IMMEDIATE;');
+  try {
+    await fn();
+    await db.exec('COMMIT;');
+  } catch (e) {
+    try {
+      await db.exec('ROLLBACK;');
+    } catch { }
+    throw e;
   }
 }
+
+export async function saveVitalSnapshots(entities) {
+  if (!entities || entities.length === 0) return;
+
+  return withAnalyticsWriteLock(async () => {
+    const db = await getDB();
+    const now = Date.now();
+
+    const rows = [];
+    for (const e of entities) {
+      if (!e?.vitals) continue;
+      rows.push({
+        occupant_id: e.id,
+        heart_rate: e.vitals.heartRate,
+        breathing_rate: e.vitals.breathingRate,
+        hrv: e.vitals.hrv,
+        temp: e.vitals.temp,
+        spo2: e.vitals.spo2,
+        sleep_stage: e.vitals.sleepStage || null,
+        activity_status: e.status,
+        motion_energy: 0,
+        x: e.x,
+        y: e.y,
+        timestamp: now,
+      });
+    }
+    if (rows.length === 0) return;
+
+    await runSerializedWrites(db, async () => {
+      // Batch insert all snapshots in one statement.
+      const placeholders = rows.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(',');
+      const params = [];
+      for (const r of rows) {
+        params.push(
+          r.occupant_id,
+          r.heart_rate,
+          r.breathing_rate,
+          r.hrv,
+          r.temp,
+          r.spo2,
+          r.sleep_stage,
+          r.activity_status,
+          r.motion_energy,
+          r.x,
+          r.y,
+          r.timestamp
+        );
+      }
+
+      await db.run(
+        `INSERT INTO vital_snapshots (occupant_id, heart_rate, breathing_rate, hrv, temp, spo2, sleep_stage, activity_status, motion_energy, x, y, timestamp)
+         VALUES ${placeholders};`,
+        params
+      );
+    });
+  }).catch((err) => {
+    console.error("❌ [Analytics] Snapshot save error:", err?.message || String(err));
+  });
+}
+
 
 // ─── Activity Tracking ────────────────────────────────────────────────
 const lastActivity = {};
@@ -109,28 +178,32 @@ const lastActivity = {};
 export async function trackActivity(entities) {
   if (!entities || entities.length === 0) return;
   const now = Date.now();
-  try {
+
+  return withAnalyticsWriteLock(async () => {
     const db = await getDB();
-    for (const e of entities) {
-      const prev = lastActivity[e.id];
-      if (prev && prev.activity !== e.status) {
-        const duration = Math.round((now - prev.startedAt) / 1000);
-        if (duration > 5) {
-          await db.run(
-            `INSERT INTO activity_log (occupant_id, activity, started_at, ended_at, duration_sec, avg_x, avg_y)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [e.id, prev.activity, prev.startedAt, now, duration, e.x, e.y]
-          );
+    await runSerializedWrites(db, async () => {
+      for (const e of entities) {
+        const prev = lastActivity[e.id];
+        if (prev && prev.activity !== e.status) {
+          const duration = Math.round((now - prev.startedAt) / 1000);
+          if (duration > 5) {
+            await db.run(
+              `INSERT INTO activity_log (occupant_id, activity, started_at, ended_at, duration_sec, avg_x, avg_y)
+               VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              [e.id, prev.activity, prev.startedAt, now, duration, e.x, e.y]
+            );
+          }
+        }
+        if (!prev || prev.activity !== e.status) {
+          lastActivity[e.id] = { activity: e.status, startedAt: now };
         }
       }
-      if (!prev || prev.activity !== e.status) {
-        lastActivity[e.id] = { activity: e.status, startedAt: now };
-      }
-    }
-  } catch (err) {
-    console.error("❌ [Analytics] Activity tracking error:", err.message);
-  }
+    });
+  }).catch((err) => {
+    console.error("❌ [Analytics] Activity tracking error:", err?.message || String(err));
+  });
 }
+
 
 // ─── Health Anomaly Detection ─────────────────────────────────────────
 const THRESHOLDS = {
@@ -143,112 +216,146 @@ const THRESHOLDS = {
 
 export async function detectAnomalies(entities) {
   if (!entities || entities.length === 0) return;
-  try {
+
+  return withAnalyticsWriteLock(async () => {
     const db = await getDB();
     const now = Date.now();
-    for (const e of entities) {
-      if (!e.vitals) continue;
-      const checks = [
-        { key: "heart_rate", val: e.vitals.heartRate },
-        { key: "breathing_rate", val: e.vitals.breathingRate },
-        { key: "hrv", val: e.vitals.hrv },
-        { key: "temp", val: e.vitals.temp },
-        { key: "spo2", val: e.vitals.spo2 }
-      ];
-      for (const c of checks) {
-        const th = THRESHOLDS[c.key];
-        if (c.val < th.low || c.val > th.high) {
-          const severity = c.key === "heart_rate" || c.key === "spo2" ? "critical" : "warning";
-          const dir = c.val < th.low ? "below" : "above";
-          // Rate-limit: max 1 alert per entity per vital per 2 minutes
-          const recent = await db.get(
-            `SELECT id FROM health_alerts WHERE occupant_id = ? AND vital_name = ? AND timestamp > ?`,
-            [e.id, c.key, now - 120000]
-          );
-          if (!recent) {
-            await db.run(
-              `INSERT INTO health_alerts (occupant_id, alert_type, severity, message, vital_name, vital_value, threshold, timestamp)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-              [e.id, "threshold_breach", severity,
-               `${e.name}: ${th.name} ${dir} safe range (${c.val})`,
-               c.key, c.val, dir === "below" ? th.low : th.high, now]
+
+    await runSerializedWrites(db, async () => {
+      for (const e of entities) {
+        if (!e?.vitals) continue;
+        const checks = [
+          { key: "heart_rate", val: e.vitals.heartRate },
+          { key: "breathing_rate", val: e.vitals.breathingRate },
+          { key: "hrv", val: e.vitals.hrv },
+          { key: "temp", val: e.vitals.temp },
+          { key: "spo2", val: e.vitals.spo2 }
+        ];
+        for (const c of checks) {
+          const th = THRESHOLDS[c.key];
+          if (!th) continue;
+
+          if (c.val < th.low || c.val > th.high) {
+            const severity = c.key === "heart_rate" || c.key === "spo2" ? "critical" : "warning";
+            const dir = c.val < th.low ? "below" : "above";
+
+            const recent = await db.get(
+              `SELECT id FROM health_alerts WHERE occupant_id = ? AND vital_name = ? AND timestamp > ?`,
+              [e.id, c.key, now - 120000]
             );
+
+            if (!recent) {
+              await db.run(
+                `INSERT INTO health_alerts (occupant_id, alert_type, severity, message, vital_name, vital_value, threshold, timestamp)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                  e.id,
+                  "threshold_breach",
+                  severity,
+                  `${e.name}: ${th.name} ${dir} safe range (${c.val})`,
+                  c.key,
+                  c.val,
+                  dir === "below" ? th.low : th.high,
+                  now
+                ]
+              );
+            }
           }
         }
       }
-    }
-  } catch (err) {
-    console.error("❌ [Analytics] Anomaly detection error:", err.message);
-  }
+    });
+  }).catch((err) => {
+    console.error("❌ [Analytics] Anomaly detection error:", err?.message || String(err));
+  });
 }
+
 
 // ─── Daily Summary Computation ────────────────────────────────────────
 export async function computeDailySummaries() {
-  try {
-    const db = await getDB();
-    const today = new Date().toISOString().slice(0, 10);
-    const dayStart = new Date(today).getTime();
-    const now = Date.now();
+  return withAnalyticsWriteLock(async () => {
+    try {
+      const db = await getDB();
+      const today = new Date().toISOString().slice(0, 10);
+      const dayStart = new Date(today).getTime();
+      const now = Date.now();
 
-    const occupants = await db.all(`SELECT DISTINCT occupant_id FROM vital_snapshots WHERE timestamp >= ?`, [dayStart]);
-
-    for (const occ of occupants) {
-      const id = occ.occupant_id;
-      const stats = await db.get(
-        `SELECT
-          AVG(heart_rate) as avg_hr, MIN(heart_rate) as min_hr, MAX(heart_rate) as max_hr,
-          AVG(breathing_rate) as avg_br, AVG(hrv) as avg_hrv,
-          AVG(temp) as avg_temp, AVG(spo2) as avg_spo2
-        FROM vital_snapshots WHERE occupant_id = ? AND timestamp >= ?`, [id, dayStart]
+      const occupants = await db.all(
+        `SELECT DISTINCT occupant_id FROM vital_snapshots WHERE timestamp >= ?`,
+        [dayStart]
       );
 
-      const activityStats = await db.get(
-        `SELECT
-          COALESCE(SUM(CASE WHEN activity = 'active' THEN duration_sec ELSE 0 END), 0) as active_sec,
-          COALESCE(SUM(CASE WHEN activity = 'resting' THEN duration_sec ELSE 0 END), 0) as resting_sec,
-          COALESCE(SUM(CASE WHEN activity = 'sleeping' THEN duration_sec ELSE 0 END), 0) as sleeping_sec
-        FROM activity_log WHERE occupant_id = ? AND started_at >= ?`, [id, dayStart]
-      );
+      await runSerializedWrites(db, async () => {
+        for (const occ of occupants) {
+          const id = occ.occupant_id;
+          const stats = await db.get(
+            `SELECT
+              AVG(heart_rate) as avg_hr, MIN(heart_rate) as min_hr, MAX(heart_rate) as max_hr,
+              AVG(breathing_rate) as avg_br, AVG(hrv) as avg_hrv,
+              AVG(temp) as avg_temp, AVG(spo2) as avg_spo2
+            FROM vital_snapshots WHERE occupant_id = ? AND timestamp >= ?`,
+            [id, dayStart]
+          );
 
-      const alertCount = await db.get(
-        `SELECT COUNT(*) as cnt FROM health_alerts WHERE occupant_id = ? AND timestamp >= ?`, [id, dayStart]
-      );
+          const activityStats = await db.get(
+            `SELECT
+              COALESCE(SUM(CASE WHEN activity = 'active' THEN duration_sec ELSE 0 END), 0) as active_sec,
+              COALESCE(SUM(CASE WHEN activity = 'resting' THEN duration_sec ELSE 0 END), 0) as resting_sec,
+              COALESCE(SUM(CASE WHEN activity = 'sleeping' THEN duration_sec ELSE 0 END), 0) as sleeping_sec
+            FROM activity_log WHERE occupant_id = ? AND started_at >= ?`,
+            [id, dayStart]
+          );
 
-      // Health score: 100 base, deductions for anomalies and vital deviations
-      let score = 100;
-      if (stats.avg_hr) {
-        if (stats.avg_hr < 55 || stats.avg_hr > 100) score -= 10;
-        if (stats.avg_spo2 && stats.avg_spo2 < 95) score -= 15;
-        if (alertCount.cnt > 0) score -= Math.min(30, alertCount.cnt * 5);
-      }
-      score = Math.max(0, Math.min(100, score));
+          const alertCount = await db.get(
+            `SELECT COUNT(*) as cnt FROM health_alerts WHERE occupant_id = ? AND timestamp >= ?`,
+            [id, dayStart]
+          );
 
-      const summary = `HR:${Math.round(stats.avg_hr || 0)} BR:${Math.round(stats.avg_br || 0)} HRV:${Math.round(stats.avg_hrv || 0)} Active:${Math.round((activityStats?.active_sec || 0) / 60)}min`;
+          let score = 100;
+          if (stats.avg_hr) {
+            if (stats.avg_hr < 55 || stats.avg_hr > 100) score -= 10;
+            if (stats.avg_spo2 && stats.avg_spo2 < 95) score -= 15;
+            if (alertCount.cnt > 0) score -= Math.min(30, alertCount.cnt * 5);
+          }
+          score = Math.max(0, Math.min(100, score));
 
-      await db.run(
-        `INSERT OR REPLACE INTO daily_health_summary
-         (occupant_id, date, avg_heart_rate, min_heart_rate, max_heart_rate,
-          avg_breathing_rate, avg_hrv, avg_temp, avg_spo2,
-          total_active_min, total_resting_min, total_sleeping_min,
-          anomaly_count, health_score, pattern_summary, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, today,
-         Math.round((stats.avg_hr || 0) * 10) / 10, stats.min_hr || 0, stats.max_hr || 0,
-         Math.round((stats.avg_br || 0) * 10) / 10,
-         Math.round((stats.avg_hrv || 0) * 10) / 10,
-         Math.round((stats.avg_temp || 0) * 10) / 10,
-         Math.round((stats.avg_spo2 || 0) * 10) / 10,
-         Math.round((activityStats?.active_sec || 0) / 60),
-         Math.round((activityStats?.resting_sec || 0) / 60),
-         Math.round((activityStats?.sleeping_sec || 0) / 60),
-         alertCount.cnt, score, summary, now]
-      );
+          const summary = `HR:${Math.round(stats.avg_hr || 0)} BR:${Math.round(stats.avg_br || 0)} HRV:${Math.round(stats.avg_hrv || 0)} Active:${Math.round((activityStats?.active_sec || 0) / 60)}min`;
+
+          await db.run(
+            `INSERT OR REPLACE INTO daily_health_summary
+             (occupant_id, date, avg_heart_rate, min_heart_rate, max_heart_rate,
+              avg_breathing_rate, avg_hrv, avg_temp, avg_spo2,
+              total_active_min, total_resting_min, total_sleeping_min,
+              anomaly_count, health_score, pattern_summary, timestamp)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              id,
+              today,
+              Math.round((stats.avg_hr || 0) * 10) / 10,
+              stats.min_hr || 0,
+              stats.max_hr || 0,
+              Math.round((stats.avg_br || 0) * 10) / 10,
+              Math.round((stats.avg_hrv || 0) * 10) / 10,
+              Math.round((stats.avg_temp || 0) * 10) / 10,
+              Math.round((stats.avg_spo2 || 0) * 10) / 10,
+              Math.round((activityStats?.active_sec || 0) / 60),
+              Math.round((activityStats?.resting_sec || 0) / 60),
+              Math.round((activityStats?.sleeping_sec || 0) / 60),
+              alertCount.cnt,
+              score,
+              summary,
+              now
+            ]
+          );
+        }
+      });
+
+      console.log("📊 [Analytics] Daily summaries computed for", occupants.length, "occupants.");
+    } catch (err) {
+      console.error("❌ [Analytics] Daily summary error:", err?.message || String(err));
     }
-    console.log("📊 [Analytics] Daily summaries computed for", occupants.length, "occupants.");
-  } catch (err) {
-    console.error("❌ [Analytics] Daily summary error:", err.message);
-  }
+  });
 }
+
 
 // ─── Query Functions (for WebSocket / API) ────────────────────────────
 export async function getAnalyticsData(occupantId) {

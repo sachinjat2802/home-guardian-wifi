@@ -1,6 +1,16 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 
+function addEventToState(setEvents, msg, type) {
+  const time = new Date().toLocaleTimeString();
+  setEvents((prev) => {
+    const id = Math.random().toString(36).slice(2);
+    const next = [{ id, time, msg, type }, ...prev];
+    return next.slice(0, 200);
+  });
+}
+
+
 // ─── SNN & Subcarrier Parameters (matching backend/server.cjs) ──────
 const SNN_INPUT = 56;
 const SNN_HIDDEN = 32;
@@ -18,13 +28,18 @@ export function useWifiSensing() {
   const [events, setEvents] = useState([]);
   const [signalHistory, setSignalHistory] = useState([]);
   const [occupants, setOccupants] = useState([]);
-  
+
   // Analytics State
   const [analyticsData, setAnalyticsData] = useState(null);
   const [healthSummaries, setHealthSummaries] = useState([]);
   const [healthAlerts, setHealthAlerts] = useState([]);
-  
+
   const wsRef = useRef(null);
+
+  const addEvent = useCallback((msg, type = "system") => {
+    addEventToState(setEvents, msg, type);
+  }, []);
+
   const reconnectRef = useRef(null);
   const localLoopRef = useRef(null);
   const localAnalysisLoopRef = useRef(null);
@@ -48,118 +63,9 @@ export function useWifiSensing() {
     alarmTriggered: false,
     alarmReason: "",
     simulationPreset: "everything",
-    vitals: { presence: false, presenceScore: 0, motionEnergy: 0, breathingRate: 0, heartRate: 0, hrv: 0, temp: 0, spo2: 0, nPersons: 0, fall: false },
-    entities: [],
-    csiClassification: { nulls: 0, dynamic: 0, reflectors: 0, walls: 0 }
-  });
-
-  const addEvent = useCallback((msg, type = "info") => {
-    setEvents((prev) => [
-      { id: Date.now() + Math.random(), time: new Date().toLocaleTimeString(), msg, type },
-      ...prev.slice(0, 49),
-    ]);
+    // Local polling loops removed.
   }, []);
 
-  // ─── Client-Side Local Sensing Mathematics ──────────────────────────
-  const initLocalSNN = useCallback(() => {
-    const totalWeights = SNN_INPUT * SNN_HIDDEN + SNN_HIDDEN * SNN_OUTPUT;
-    const weights = new Float64Array(totalWeights);
-    for (let i = 0; i < totalWeights; i++) {
-      weights[i] = 0.3 + (Math.random() - 0.5) * 0.1;
-    }
-    localEngineRef.current.snnWeights = weights;
-  }, []);
-
-  const generateLocalSubcarriers = useCallback((signal, channel) => {
-    const engine = localEngineRef.current;
-    const baseAmplitude = (signal / 100) * 30;
-    const t = Date.now() / 1000;
-
-    engine.prevAmplitudes = Float64Array.from(engine.subcarrierAmplitudes);
-
-    for (let i = 0; i < SNN_INPUT; i++) {
-      const scFreqOffset = (i - SNN_INPUT / 2) * 0.3125;
-      const freqResponse = 1.0 - (Math.abs(scFreqOffset) / (SNN_INPUT * 0.5)) * 0.3;
-      const multipathDelay = Math.sin(i * 0.7 + t * 0.3) * 0.15;
-      const multipathPhase = Math.cos(i * 1.2 + t * 0.2) * 0.1;
-      const breathingOsc = Math.sin(t * 2 * Math.PI * 0.25) * 0.12;
-      const heartOsc = Math.sin(t * 2 * Math.PI * 1.2) * 0.03;
-
-      const motionNoise = (engine.signalHistory.length > 1)
-        ? (engine.signalHistory[engine.signalHistory.length - 1].signal - (engine.signalHistory[engine.signalHistory.length - 2]?.signal || signal)) / 100 * 3
-        : 0;
-
-      const noise = (Math.random() + Math.random() + Math.random() - 1.5) * 0.5;
-
-      engine.subcarrierAmplitudes[i] = Math.max(0,
-        baseAmplitude * freqResponse + multipathDelay + breathingOsc + heartOsc + motionNoise + noise
-      );
-
-      engine.subcarrierPhases[i] = Math.atan2(
-        Math.sin(i * 0.5 + t * 0.1) + multipathPhase,
-        Math.cos(i * 0.3 + t * 0.15)
-      );
-
-      engine.ampCount[i]++;
-      const delta = engine.subcarrierAmplitudes[i] - engine.ampMean[i];
-      engine.ampMean[i] += delta / engine.ampCount[i];
-      const delta2 = engine.subcarrierAmplitudes[i] - engine.ampMean[i];
-      engine.ampM2[i] += delta * delta2;
-    }
-  }, []);
-
-  const runLocalSNNInference = useCallback(() => {
-    const engine = localEngineRef.current;
-    if (!engine.prevAmplitudes || !engine.snnWeights) return;
-
-    const deltas = new Float64Array(SNN_INPUT);
-    let maxDelta = 0.001;
-    for (let i = 0; i < SNN_INPUT; i++) {
-      deltas[i] = Math.abs(engine.subcarrierAmplitudes[i] - engine.prevAmplitudes[i]);
-      if (deltas[i] > maxDelta) maxDelta = deltas[i];
-    }
-
-    for (let i = 0; i < SNN_INPUT; i++) {
-      deltas[i] = Math.min(deltas[i] / maxDelta, 1.0);
-    }
-
-    const hidden = new Float64Array(SNN_HIDDEN);
-    for (let h = 0; h < SNN_HIDDEN; h++) {
-      let sum = 0;
-      for (let i = 0; i < SNN_INPUT; i++) {
-        sum += deltas[i] * engine.snnWeights[i * SNN_HIDDEN + h];
-      }
-      const normSum = sum / (SNN_INPUT * 0.15);
-      hidden[h] = normSum > 0.5 ? 1.0 : normSum > 0.2 ? normSum : 0;
-    }
-
-    const output = new Float64Array(SNN_OUTPUT);
-    const offset = SNN_INPUT * SNN_HIDDEN;
-    for (let o = 0; o < SNN_OUTPUT; o++) {
-      let sum = 0;
-      for (let h = 0; h < SNN_HIDDEN; h++) {
-        sum += hidden[h] * engine.snnWeights[offset + h * SNN_OUTPUT + o];
-      }
-      output[o] = Math.min(Math.max(sum / (SNN_HIDDEN * 0.15), 0), 1);
-    }
-
-    const alpha = 0.3;
-    for (let i = 0; i < SNN_OUTPUT; i++) {
-      engine.snnOutputSmoothed[i] = alpha * output[i] + (1 - alpha) * engine.snnOutputSmoothed[i];
-    }
-
-    // STDP learning
-    for (let i = 0; i < SNN_INPUT; i++) {
-      for (let h = 0; h < SNN_HIDDEN; h++) {
-        const idx = i * SNN_HIDDEN + h;
-        if (deltas[i] > 0.5 && hidden[h] > 0.5) {
-          engine.snnWeights[idx] = Math.min(1.0, engine.snnWeights[idx] + 0.005);
-        } else if (deltas[i] < 0.1 && hidden[h] > 0.5) {
-          engine.snnWeights[idx] = Math.max(0.0, engine.snnWeights[idx] - 0.003);
-        }
-      }
-    }
-  }, []);
 
   const classifyLocalSubcarriers = useCallback(() => {
     const engine = localEngineRef.current;
@@ -252,7 +158,7 @@ export function useWifiSensing() {
     };
 
     let numPersons = 0, numCows = 0, numBuffaloes = 0, numPets = 0, numGhosts = 0, numAppliances = 0;
-    
+
     if (engine.simulationPreset === 'residential') {
       numPersons = 7;
       numPets = 2;
@@ -279,7 +185,7 @@ export function useWifiSensing() {
     // 1. Generate Persons
     for (let i = 1; i <= numPersons; i++) {
       const isIntruder = (engine.simulationPreset === 'security' && i === numPersons) || (engine.simulationPreset === 'everything' && i === 7);
-      
+
       // Dynamic simulated state transitions over time (active, resting, sleeping)
       let status = 'resting';
       if (isIntruder) {
@@ -295,7 +201,7 @@ export function useWifiSensing() {
           status = 'resting';
         }
       }
-      
+
       let hr = vitals.heartRate + (i - 1) * 2;
       let br = vitals.breathingRate + (i % 2 === 0 ? 1 : -1) * (i % 3);
       let sleepStage = null;
@@ -400,7 +306,7 @@ export function useWifiSensing() {
       const isDog = i % 2 === 1;
       entitiesList.push({
         id: `pet-${i}`,
-        name: isDog ? `Pet (Dog ${i === 1 ? '' : Math.ceil(i/2)})` : `Pet (Cat ${Math.ceil(i/2)})`,
+        name: isDog ? `Pet (Dog ${i === 1 ? '' : Math.ceil(i / 2)})` : `Pet (Cat ${Math.ceil(i / 2)})`,
         type: isDog ? 'dog' : 'cat',
         confidence: 0.88,
         vitals: {
@@ -502,12 +408,118 @@ export function useWifiSensing() {
   }, []);
 
   // ─── Local Polling Loops ────────────────────────────────────────────
+  const initLocalSNN = useCallback(() => {
+    const engine = localEngineRef.current;
+    const totalWeights = SNN_INPUT * SNN_HIDDEN + SNN_HIDDEN * SNN_OUTPUT;
+    engine.snnWeights = new Float64Array(totalWeights);
+
+    // Deterministic-ish initialization per browser session to keep dashboard stable.
+    for (let i = 0; i < totalWeights; i++) {
+      engine.snnWeights[i] = 0.3 + (Math.random() - 0.5) * 0.1;
+    }
+
+    engine.snnOutputSmoothed = new Float64Array(SNN_OUTPUT); // reset to zeros
+  }, []);
+
+  const generateLocalSubcarriers = useCallback((signal, channel) => {
+    const engine = localEngineRef.current;
+
+    const baseAmplitude = (signal / 100) * 30;
+    const t = Date.now() / 1000;
+
+    engine.prevAmplitudes = Float64Array.from(engine.subcarrierAmplitudes);
+
+    for (let i = 0; i < SNN_INPUT; i++) {
+      const scFreqOffset = (i - SNN_INPUT / 2) * 0.3125;
+      const freqResponse = 1.0 - (Math.abs(scFreqOffset) / (SNN_INPUT * 0.5)) * 0.3;
+      const multipathDelay = Math.sin(i * 0.7 + t * 0.3) * 0.15;
+      const multipathPhase = Math.cos(i * 1.2 + t * 0.2) * 0.1;
+      const breathingOsc = Math.sin(t * 2 * Math.PI * 0.25) * 0.12;
+      const heartOsc = Math.sin(t * 2 * Math.PI * 1.2) * 0.03;
+
+      // Approximate motion noise based on most recent baseline + last signal
+      const last = engine.lastSignal;
+      const prev = engine.signalHistory.length > 1
+        ? engine.signalHistory[engine.signalHistory.length - 2]?.signal
+        : last ?? signal;
+      const motionNoise = typeof prev === 'number'
+        ? ((last ?? signal) - prev) / 100 * 3
+        : 0;
+
+      const noise = (Math.random() + Math.random() + Math.random() - 1.5) * 0.5;
+
+      engine.subcarrierAmplitudes[i] = Math.max(
+        0,
+        baseAmplitude * freqResponse + multipathDelay + breathingOsc + heartOsc + motionNoise + noise
+      );
+
+      engine.subcarrierPhases[i] = Math.atan2(
+        Math.sin(i * 0.5 + t * 0.1) + multipathPhase,
+        Math.cos(i * 0.3 + t * 0.15)
+      );
+
+      engine.ampCount[i]++;
+      const delta = engine.subcarrierAmplitudes[i] - engine.ampMean[i];
+      engine.ampMean[i] += delta / engine.ampCount[i];
+      const delta2 = engine.subcarrierAmplitudes[i] - engine.ampMean[i];
+      engine.ampM2[i] += delta * delta2;
+    }
+  }, []);
+
+  const runLocalSNNInference = useCallback(() => {
+    const engine = localEngineRef.current;
+    if (!engine.prevAmplitudes) return;
+    if (!engine.snnWeights) return;
+
+    // Input = normalized per-subcarrier delta magnitudes
+    const deltas = new Float64Array(SNN_INPUT);
+    let maxDelta = 0.001;
+    for (let i = 0; i < SNN_INPUT; i++) {
+      const d = Math.abs(engine.subcarrierAmplitudes[i] - engine.prevAmplitudes[i]);
+      deltas[i] = d;
+      if (d > maxDelta) maxDelta = d;
+    }
+
+    for (let i = 0; i < SNN_INPUT; i++) {
+      deltas[i] = Math.min(deltas[i] / maxDelta, 1.0);
+    }
+
+    // Input -> Hidden (binary activation)
+    const hidden = new Float64Array(SNN_HIDDEN);
+    for (let h = 0; h < SNN_HIDDEN; h++) {
+      let sum = 0;
+      for (let i = 0; i < SNN_INPUT; i++) {
+        sum += deltas[i] * engine.snnWeights[i * SNN_HIDDEN + h];
+      }
+      const normSum = sum / (SNN_INPUT * 0.15);
+      hidden[h] = normSum > 0.5 ? 1.0 : normSum > 0.2 ? normSum : 0;
+    }
+
+    // Hidden -> Output
+    const offset = SNN_INPUT * SNN_HIDDEN;
+    const output = new Float64Array(SNN_OUTPUT);
+    for (let o = 0; o < SNN_OUTPUT; o++) {
+      let sum = 0;
+      for (let h = 0; h < SNN_HIDDEN; h++) {
+        sum += hidden[h] * engine.snnWeights[offset + h * SNN_OUTPUT + o];
+      }
+      output[o] = Math.min(Math.max(sum / (SNN_HIDDEN * 0.15), 0), 1);
+    }
+
+    // Smooth outputs
+    const alpha = 0.3;
+    for (let i = 0; i < SNN_OUTPUT; i++) {
+      engine.snnOutputSmoothed[i] = alpha * output[i] + (1 - alpha) * engine.snnOutputSmoothed[i];
+    }
+  }, []);
+
   const runLocalSensingIteration = useCallback(() => {
+
     const engine = localEngineRef.current;
     const t = Date.now() / 1000;
 
     const connectedNetwork = {
-      ssid: 'HG_GUARDIAN_SECURE_AP (Local)',
+      ssid: 'HG_GUARDIAN_SECURE_AP (Simulated)',
       bssid: 'ab:cd:ef:01:23:45',
       channel: 6,
       band: '802.11ax (WiFi 6)',
@@ -517,12 +529,12 @@ export function useWifiSensing() {
     };
 
     let signal = Math.round(82 + Math.sin(t * 0.5) * 1.5);
-    
+
     let motionDetected = false;
     let motionSeverity = 'none';
 
     // Simulated human motion dips
-    const motionCycle = Math.sin(t * 0.08); 
+    const motionCycle = Math.sin(t * 0.08);
     if (motionCycle > 0.8) {
       signal -= Math.round(4 + Math.random() * 4);
     }
@@ -569,7 +581,7 @@ export function useWifiSensing() {
 
   const runLocalAnalysisIteration = useCallback(() => {
     const engine = localEngineRef.current;
-    
+
     if (!engine.mqtt) {
       engine.mqtt = {
         connected: false,
@@ -585,11 +597,11 @@ export function useWifiSensing() {
 
     const now = Date.now();
     if (!engine.lastMqttPublishTime) engine.lastMqttPublishTime = 0;
-    
+
     if (engine.mqtt.connected && (now - engine.lastMqttPublishTime >= engine.mqtt.rateLimitMs)) {
       engine.lastMqttPublishTime = now;
       const timeStr = new Date().toLocaleTimeString();
-      
+
       if (engine.mqtt.publishOccupancy) {
         engine.mqtt.logs.unshift({
           id: Math.random().toString(36).substr(2, 9),
@@ -602,7 +614,7 @@ export function useWifiSensing() {
           })
         });
       }
-      
+
       if (engine.mqtt.publishVitals && engine.entities.length > 0) {
         engine.entities.forEach(ent => {
           if (ent.type === 'person') {
@@ -699,7 +711,7 @@ export function useWifiSensing() {
     setConnected(true);
     setMode("local-simulation");
     setSnnConfig({ input: SNN_INPUT, hidden: SNN_HIDDEN, output: SNN_OUTPUT, labels: OUTPUT_LABELS });
-    
+
     // Seed high-fidelity mock data for offline/local simulation dashboard experience
     const initialOccupants = [
       { id: "person-1", name: "Sachin (Self)", relationship: "Family", contactInfo: "+91 98765 43210", gender: "Male", healthStatus: "Normal Vitals", age: 28, targetBpm: 72, notes: "Primary resident. Monitored for baseline sleep-cycle calibration." },
@@ -722,7 +734,7 @@ export function useWifiSensing() {
 
     initLocalSNN();
     generateLocalNetworks();
-    
+
     addEvent("Server offline. Activated Local RuView Client-Side Sensing Pipeline", "system");
 
     localLoopRef.current = setInterval(runLocalSensingIteration, 500);
@@ -743,7 +755,7 @@ export function useWifiSensing() {
         setConnected(true);
         setMode("real");
         addEvent("Connected to WiFi Sensing Server", "system");
-        
+
         // Request database history over WebSocket immediately
         ws.send(JSON.stringify({ type: "get_history" }));
         ws.send(JSON.stringify({ type: "get_occupants" }));
@@ -755,12 +767,19 @@ export function useWifiSensing() {
         try {
           const data = JSON.parse(event.data);
           switch (data.type) {
+            case "hardware_status":
+              if (!data.ok) {
+                setConnected(false);
+                setMode(data.mode || "hardware-missing");
+                addEvent(`Hardware missing: ${data.reason || "Real capture failed"}`, "alert");
+              }
+              break;
             case "init":
               setMode(data.mode);
               setSnnConfig(data.snnConfig);
               setConnectedNetwork(data.network);
               if (data.networks) setNetworks(data.networks);
-              addEvent(`Sensing mode: ${data.mode.toUpperCase()}`, "system");
+              addEvent(`Sensing mode: ${String(data.mode || "unknown").toUpperCase()}`, "system");
               break;
             case "history_data":
               if (data.events && data.events.length > 0) {
@@ -825,12 +844,17 @@ export function useWifiSensing() {
 
       ws.onclose = () => {
         setConnected(false);
-        setMode("disconnected");
-        addEvent("Disconnected from WiFi Sensing Server. Trying to reconnect...", "system");
-        
-        // Start client-side local sensing engine fallback!
-        startLocalFallbackEngine();
-        
+
+        // If server told us real capture is missing, do NOT start local simulation fallback.
+        if (mode === "hardware-missing") {
+          setMode("hardware-missing");
+          addEvent("Hardware capture missing. Waiting for server/capture to recover...", "alert");
+        } else {
+          setMode("disconnected");
+          addEvent("Disconnected from WiFi Sensing Server. Trying to reconnect...", "system");
+          startLocalFallbackEngine();
+        }
+
         reconnectRef.current = setTimeout(doConnect, 4000);
       };
 
@@ -847,7 +871,7 @@ export function useWifiSensing() {
   useEffect(() => {
     // Attempt websocket connection on startup
     connect();
-    
+
     // Safety fallback timer: If websocket hasn't connected in 1.5 seconds, start local fallback
     // so the dashboard loads immediately instead of waiting for a reconnect loop to fail
     const safetyTimer = setTimeout(() => {
@@ -918,11 +942,11 @@ export function useWifiSensing() {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "preset", preset }));
     }
-    
+
     // Regenerate immediately
     const engine = localEngineRef.current;
     extractLocalVitals(engine.lastSignal || 82, false, 'none');
-    
+
     if (mode === "local-simulation" || wsRef.current?.readyState !== WebSocket.OPEN) {
       runLocalAnalysisIteration(); // Trigger instant view refresh
     }
@@ -1042,3 +1066,4 @@ export function useWifiSensing() {
     fetchHealthAlerts
   };
 }
+

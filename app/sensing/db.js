@@ -1,8 +1,44 @@
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
+import fs from 'fs';
 
 let dbInstance = null;
+
+function looksLikeSqliteCorruption(err) {
+  const msg = err?.message ? String(err.message) : String(err);
+  return /SQLITE_CORRUPT|malformed|database disk image is malformed/i.test(msg);
+}
+
+function safeRenameCorruptFile(dbPath) {
+  try {
+    if (!fs.existsSync(dbPath)) return;
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const corruptPath = `${dbPath}.corrupt-${ts}`;
+    fs.renameSync(dbPath, corruptPath);
+    console.warn(`⚠️ [Database] Renamed corrupted DB: ${dbPath} -> ${corruptPath}`);
+  } catch (e) {
+    console.warn('⚠️ [Database] Failed to rename corrupted DB file:', e?.message || String(e));
+  }
+}
+
+async function openDbWithRecovery(dbPath) {
+  try {
+    return await open({
+      filename: dbPath,
+      driver: sqlite3.Database
+    });
+  } catch (err) {
+    if (looksLikeSqliteCorruption(err)) {
+      safeRenameCorruptFile(dbPath);
+      return await open({
+        filename: dbPath,
+        driver: sqlite3.Database
+      });
+    }
+    throw err;
+  }
+}
 
 export async function getDb() {
   if (dbInstance) {
@@ -11,10 +47,8 @@ export async function getDb() {
 
   const dbPath = path.resolve(process.cwd(), 'ruview.db');
 
-  dbInstance = await open({
-    filename: dbPath,
-    driver: sqlite3.Database
-  });
+  dbInstance = await openDbWithRecovery(dbPath);
+
 
   await dbInstance.exec(`
     CREATE TABLE IF NOT EXISTS telemetry (
@@ -98,7 +132,7 @@ export async function insertEntities(timestamp, entities) {
   const stmt = await db.prepare(
     `INSERT INTO entities (timestamp, entity_id, name, type, confidence, heart_rate, breathing_rate, hrv, temp, spo2, sleep_stage, age, gait_speed, body_density, status, x, y) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
-  
+
   for (const entity of entities) {
     await stmt.run([
       timestamp,

@@ -35,7 +35,7 @@ export function startSensingServer() {
   }
 
   console.log("🚀 [Sensing Engine] Initializing Next.js-Style RuView Sensing Pipeline...");
-  
+
   // ─── Setup Engine State ─────────────────────────────────────────────
   const state = {
     frameCount: 0,
@@ -55,7 +55,8 @@ export function startSensingServer() {
     alarmTriggered: false,
     alarmReason: "",
     simulationPreset: "everything",
-    systemMode: "real", // Starts as 'real', falls back to 'simulation' if netsh is not present
+    // real hardware mode must not be faked. If capture fails, switch to hardware-missing.
+    systemMode: "real",
     vitals: { presence: false, presenceScore: 0, motionEnergy: 0, breathingRate: 0, heartRate: 0, hrv: 0, temp: 0, spo2: 0, nPersons: 0, fall: false },
     entities: [],
     detectedNetworks: [],
@@ -109,6 +110,56 @@ export function startSensingServer() {
       }
     });
   }
+
+  const setHardwareMissing = (reason) => {
+    // Idempotency: avoid spamming broadcasts if multiple intervals fail close together.
+    if (state.systemMode === "hardware-missing") return;
+
+    // Ensure no synthetic CSI/entity generation happens in "real" flow.
+    state.systemMode = "hardware-missing";
+    state.connectedNetwork = null;
+    state.detectedNetworks = [];
+    state.lastSignal = null;
+    state.baselineSignal = 0;
+    state.signalHistory = [];
+
+    // Freeze CSI outputs as empty/idle (UI can render zeros).
+    state.prevAmplitudes = null;
+    state.csiClassification = { nulls: 0, dynamic: 0, reflectors: 0, walls: 0 };
+    state.vitals = { ...state.vitals, presence: false, presenceScore: 0, motionEnergy: 0, breathingRate: 0, heartRate: 0, hrv: 0, temp: 0, spo2: 0, nPersons: 0, fall: false };
+    state.entities = [];
+    state.alarmTriggered = false;
+    state.alarmReason = "";
+
+    broadcast({
+      type: "hardware_status",
+      ok: false,
+      mode: "hardware-missing",
+      reason: reason || "Real capture failed",
+      timestamp: Date.now(),
+    });
+
+    // Also broadcast a minimal init so the client can stop trying to simulate.
+    broadcast({
+      type: "init",
+      mode: "hardware-missing",
+      snnConfig: {
+        input: SNN_INPUT,
+        hidden: SNN_HIDDEN,
+        output: SNN_OUTPUT,
+        labels: OUTPUT_LABELS,
+      },
+      network: null,
+      networks: [],
+      security: {
+        armed: state.securityArmed,
+        triggered: state.alarmTriggered,
+        reason: state.alarmReason,
+        preset: state.simulationPreset,
+      },
+      mqtt: { ...state.mqtt }
+    });
+  };
 
   // Helper converting Signal % to dBm RSSI
   const signalToRSSI = (pct) => Math.round(-100 + (pct / 100) * 60);
@@ -293,7 +344,7 @@ export function startSensingServer() {
 
   const extractVitals = (signal, motionDetected = false, motionSeverity = "none") => {
     const t = Date.now() / 1000;
-    
+
     let presence = false;
     let presenceScore = 0;
     let motionEnergy = 0;
@@ -346,7 +397,7 @@ export function startSensingServer() {
     };
 
     let numPersons = 0, numCows = 0, numBuffaloes = 0, numPets = 0, numGhosts = 0, numAppliances = 0;
-    
+
     if (state.simulationPreset === 'residential') {
       numPersons = 7;
       numPets = 2;
@@ -373,7 +424,7 @@ export function startSensingServer() {
     // Persons
     for (let i = 1; i <= numPersons; i++) {
       const isIntruder = (state.simulationPreset === 'security' && i === numPersons) || (state.simulationPreset === 'everything' && i === 7);
-      
+
       // Dynamic simulated state transitions over time (active, resting, sleeping)
       let status = 'resting';
       if (isIntruder) {
@@ -389,7 +440,7 @@ export function startSensingServer() {
           status = 'resting';
         }
       }
-      
+
       let hr = vitalsObj.heartRate + (i - 1) * 2;
       let br = vitalsObj.breathingRate + (i % 2 === 0 ? 1 : -1) * (i % 3);
       let sleepStage = null;
@@ -534,7 +585,7 @@ export function startSensingServer() {
 
       entitiesList.push({
         id: `pet-${i}`,
-        name: isDog ? `Pet (Dog ${i === 1 ? '' : Math.ceil(i/2)})` : `Pet (Cat ${Math.ceil(i/2)})`,
+        name: isDog ? `Pet (Dog ${i === 1 ? '' : Math.ceil(i / 2)})` : `Pet (Cat ${Math.ceil(i / 2)})`,
         type: isDog ? 'dog' : 'cat',
         confidence: 0.88,
         vitals: {
@@ -674,6 +725,9 @@ export function startSensingServer() {
 
   // ─── Real Wi-Fi Fetching via netsh ───────────────────────────────────
   const getWiFiSignal = () => {
+    // If hardware capture is missing, do nothing (no fake telemetry).
+    if (state.systemMode === "hardware-missing") return;
+
     if (state.systemMode === "simulation") {
       state.connectedNetwork = {
         ssid: 'HG_GUARDIAN_SECURE_AP',
@@ -690,7 +744,7 @@ export function startSensingServer() {
       let motionDetected = false;
       let motionSeverity = 'none';
 
-      const motionCycle = Math.sin(t * 0.08); 
+      const motionCycle = Math.sin(t * 0.08);
       if (motionCycle > 0.8) {
         signal -= Math.round(4 + Math.random() * 4);
       }
@@ -746,45 +800,40 @@ export function startSensingServer() {
     exec('netsh wlan show interfaces', (error, stdout, stderr) => {
       const signalMatch = stdout ? stdout.match(/Signal\s*:\s*(\d+)%/) : null;
 
-      let signal, ssid, bssid, channel, band, rxRate, txRate;
-
       if (error || !signalMatch || !signalMatch[1]) {
-        // Mock hardware telemetry data for Linux/macOS if netsh fails
-        // but keep systemMode as 'real'.
-        const t = Date.now() / 1000;
-        signal = Math.round(75 + Math.sin(t * 0.7) * 2.5);
-        ssid = 'Mock_Real_Hardware_AP';
-        bssid = 'aa:bb:cc:dd:ee:ff';
-        channel = 11;
-        band = '802.11ac (Mocked)';
-        rxRate = 866.7;
-        txRate = 866.7;
-      } else {
-        const ssidMatch = stdout.match(/SSID\s*:\s*(.+)/);
-        const bssidMatch = stdout.match(/BSSID\s*:\s*([0-9a-fA-F:]+)/);
-        const channelMatch = stdout.match(/Channel\s*:\s*(\d+)/);
-        const bandMatch = stdout.match(/Radio type\s*:\s*(.+)/);
-        const rxMatch = stdout.match(/Receive rate \(Mbps\)\s*:\s*([\d.]+)/);
-        const txMatch = stdout.match(/Transmit rate \(Mbps\)\s*:\s*([\d.]+)/);
-
-        signal = parseInt(signalMatch[1]);
-        ssid = ssidMatch ? ssidMatch[1].trim() : 'Unknown';
-        bssid = bssidMatch ? bssidMatch[1].trim() : 'Unknown';
-        channel = channelMatch ? parseInt(channelMatch[1]) : 0;
-        band = bandMatch ? bandMatch[1].trim() : 'Unknown';
-        rxRate = rxMatch ? parseFloat(rxMatch[1]) : 0;
-        txRate = txMatch ? parseFloat(txMatch[1]) : 0;
+        const reason = error
+          ? (error.message || "netsh execution error")
+          : "netsh output missing Signal field";
+        setHardwareMissing(reason);
+        return;
       }
 
-      state.connectedNetwork = { ssid, bssid, channel, band, signal, rxRate, txRate };
-      // Explicitly keep state.systemMode as 'real' instead of dropping to simulation
+      const ssidMatch = stdout.match(/SSID\s*:\s*(.+)/);
+      const bssidMatch = stdout.match(/BSSID\s*:\s*([0-9a-fA-F:]+)/);
+      const channelMatch = stdout.match(/Channel\s*:\s*(\d+)/);
+      const bandMatch = stdout.match(/Radio type\s*:\s*(.+)/);
+      const rxMatch = stdout.match(/Receive rate \(Mbps\)\s*:\s*([\d.]+)/);
+      const txMatch = stdout.match(/Transmit rate \(Mbps\)\s*:\s*([\d.]+)/);
+
+      const signal = parseInt(signalMatch[1]);
+      const ssid = ssidMatch ? ssidMatch[1].trim() : 'Unknown';
+      const bssid = bssidMatch ? bssidMatch[1].trim() : 'Unknown';
+      const channel = channelMatch ? parseInt(channelMatch[1]) : 0;
+      const band = bandMatch ? bandMatch[1].trim() : 'Unknown';
+      const rxRate = rxMatch ? parseFloat(rxMatch[1]) : 0;
+      const txRate = txMatch ? parseFloat(txMatch[1]) : 0;
+
+      // Keep real mode only when capture worked.
       state.systemMode = 'real';
+      state.connectedNetwork = { ssid, bssid, channel, band, signal, rxRate, txRate };
 
       state.signalHistory.push({ signal, timestamp: Date.now() });
       if (state.signalHistory.length > HISTORY_SIZE) state.signalHistory.shift();
 
       state.baselineSignal = state.signalHistory.reduce((a, b) => a + b.signal, 0) / state.signalHistory.length;
 
+      // NOTE: this project still derives CSI-like spectrum from signal for now.
+      // The important fix for "real hardware" is to stop the fake telemetry path when netsh fails.
       generateSubcarriers(signal, channel);
 
       let motionDetected = false;
@@ -831,6 +880,8 @@ export function startSensingServer() {
   };
 
   const scanNetworks = () => {
+    if (state.systemMode === "hardware-missing") return;
+
     if (state.systemMode === "simulation") {
       state.detectedNetworks = [
         { ssid: "HG_GUARDIAN_SECURE_AP", bssid: "ab:cd:ef:01:23:45", signal: 82, channel: 6, auth: "WPA3-Personal", band: "802.11ax (WiFi 6)", rssi: -51, isConnected: true },
@@ -849,18 +900,7 @@ export function startSensingServer() {
 
     exec('netsh wlan show networks mode=bssid', (error, stdout, stderr) => {
       if (error) {
-        // If netsh fails on Linux/macOS, populate with mock detected networks for real mode
-        state.detectedNetworks = [
-          { ssid: "Mock_Real_Hardware_AP", bssid: "aa:bb:cc:dd:ee:ff", signal: 75, channel: 11, auth: "WPA3-Personal", band: "802.11ac", rssi: -55, isConnected: true },
-          { ssid: "RealNet_5G", bssid: "11:22:33:44:55:66", signal: 55, channel: 44, auth: "WPA2-Personal", band: "802.11ac", rssi: -65, isConnected: false },
-          { ssid: "IoT_Hardware_Node", bssid: "99:88:77:66:55:44", signal: 40, channel: 1, auth: "WPA2-Personal", band: "802.11n", rssi: -75, isConnected: false }
-        ];
-
-        broadcast({
-          type: 'networks',
-          networks: state.detectedNetworks,
-          timestamp: Date.now(),
-        });
+        setHardwareMissing(error.message || "netsh networks failed");
         return;
       }
 
