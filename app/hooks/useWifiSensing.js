@@ -772,6 +772,9 @@ export function useWifiSensing() {
                 setConnected(false);
                 setMode(data.mode || "hardware-missing");
                 addEvent(`Hardware missing: ${data.reason || "Real capture failed"}`, "alert");
+              } else {
+                setMode(data.mode);
+                addEvent(`Hardware status: ${String(data.mode).toUpperCase()}`, "system");
               }
               break;
             case "init":
@@ -814,6 +817,9 @@ export function useWifiSensing() {
               break;
             case "telemetry":
               setTelemetry(data);
+              if (data.mode) {
+                setMode(data.mode);
+              }
               setSignalHistory((prev) => {
                 const next = [...prev, { signal: data.signal, baseline: data.baseline, t: Date.now() }];
                 return next.slice(-60);

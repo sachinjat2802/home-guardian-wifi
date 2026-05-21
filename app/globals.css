@@ -247,3 +247,148 @@ body {
 .animate-spin-slow {
   animation: spin-slow 8s linear infinite;
 }
+
+/* ─── Immersive 3D Spatial Holodeck Styling ─────────────────────────── */
+
+.perspective-deck {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+  transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.spatial-active {
+  transform: rotateX(12deg) rotateY(-8deg) rotateZ(1deg) scale(0.95) translateY(20px);
+}
+
+/* Interactive 3D Card Tilting with real depth */
+.tilt-card {
+  transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+.tilt-card:hover {
+  box-shadow: 
+    0 15px 35px rgba(0, 0, 0, 0.4), 
+    0 0 30px rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Glassmorphism overrides with high-end premium specs */
+.glass-premium {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-top-color: rgba(255, 255, 255, 0.12);
+  border-left-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 4px 30px rgba(0, 0, 0, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Floating layer effects */
+.layer-base { transform: translateZ(0px); }
+.layer-mid { transform: translateZ(25px); transform-style: preserve-3d; }
+.layer-high { transform: translateZ(50px); transform-style: preserve-3d; }
+.layer-top { transform: translateZ(80px); transform-style: preserve-3d; }
+
+/* Custom cursor mesh style */
+.cyber-dot {
+  width: 6px;
+  height: 6px;
+  background-color: var(--accent);
+  border-radius: 50%;
+  position: fixed;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: 0 0 15px var(--accent);
+  transition: width 0.2s, height 0.2s, background-color 0.2s;
+}
+
+/* Animated Aurora BG overlays */
+.aurora-blur {
+  position: absolute;
+  filter: blur(140px);
+  opacity: 0.15;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  z-index: 0;
+  animation: aurora-move 20s infinite alternate ease-in-out;
+}
+
+@keyframes aurora-move {
+  0% { transform: translate(0px, 0px) rotate(0deg); }
+  50% { transform: translate(100px, 80px) rotate(180deg); }
+  100% { transform: translate(-80px, -50px) rotate(360deg); }
+}
+
+/* Cinematic 3D Camera Warp transitions between dashboard sections */
+@keyframes camera-warp {
+  0% {
+    transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1) translateY(0px) translateZ(0px);
+    filter: blur(0px) brightness(1);
+  }
+  40% {
+    transform: rotateX(24deg) rotateY(-30deg) rotateZ(-3deg) scale(0.72) translateY(-40px) translateZ(-350px);
+    filter: blur(5px) brightness(0.6);
+  }
+  100% {
+    transform: rotateX(8deg) rotateY(-6deg) rotateZ(0deg) scale(0.94) translateY(10px) translateZ(0px);
+    filter: blur(0px) brightness(1);
+  }
+}
+
+.camera-warping {
+  animation: camera-warp 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Volumetric dynamic fog mesh */
+.volumetric-fog {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(circle at 50% -20%, rgba(59, 130, 246, 0.12), transparent 70%),
+              radial-gradient(circle at 10% 90%, rgba(6, 182, 212, 0.08), transparent 50%),
+              radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.08), transparent 60%);
+  mix-blend-mode: color-dodge;
+  opacity: 0.85;
+}
+
+/* Glowing volumetric dust/light specs */
+.dust-particle {
+  position: absolute;
+  background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+  animation: dust-float infinite linear;
+}
+
+@keyframes dust-float {
+  0% { transform: translateY(100vh) translateX(0) scale(0.5); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(-10vh) translateX(50px) scale(1.2); opacity: 0; }
+}
+
+/* Cinematic text gradient glow */
+.text-glimmer {
+  background: linear-gradient(90deg, #ffffff, #93c5fd, #ffffff);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: glimmer-shine 6s linear infinite;
+}
+
+@keyframes glimmer-shine {
+  to { background-position: 200% center; }
+}
+
+/* Magnetic active states */
+.magnetic-pull {
+  will-change: transform;
+}
+

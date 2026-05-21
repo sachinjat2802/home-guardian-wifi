@@ -77,9 +77,9 @@ export default function Sidebar({ activeTab, setActiveTab, connected, mode }) {
             <li
               key={id}
               onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-sm font-medium transition-all
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-sm font-medium transition-all magnetic-pull
                 ${activeTab === id
-                  ? "bg-[var(--accent)]/10 text-white border border-[var(--accent)]/30"
+                  ? "bg-[var(--accent)]/10 text-white border border-[var(--accent)]/30 shadow-[0_0_15px_rgba(59,130,246,0.15)]"
                   : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white border border-transparent"}`}
             >
               <Icon size={18} />

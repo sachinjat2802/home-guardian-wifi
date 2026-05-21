@@ -13,13 +13,43 @@ import FloorplanView from "./components/FloorplanView";
 import PoseReconstructor from "./components/PoseReconstructor";
 import OccupantsRegistry from "./components/OccupantsRegistry";
 import AiCopilot from "./components/AiCopilot";
-import { Shield, ShieldAlert, Play, Square, RefreshCw, Volume2, VolumeX, AlertOctagon, Palette, Sparkles } from "lucide-react";
+import SpatialBackground from "./components/SpatialBackground";
+import { Shield, ShieldAlert, Play, Square, RefreshCw, Volume2, VolumeX, AlertOctagon, Palette, Sparkles, Layers } from "lucide-react";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [selectedEntityId, setSelectedEntityId] = useState(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [theme, setTheme] = useState("classic");
+  const [is3DMode, setIs3DMode] = useState(false);
+  const [rotation, setRotation] = useState({ x: 0, y: 0 });
+  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+  const [isWarping, setIsWarping] = useState(false);
+  const [dustParticles, setDustParticles] = useState([]);
+
+  useEffect(() => {
+    // Generate volumetric floating specs for cyber depth
+    const particles = Array.from({ length: 15 }).map((_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      delay: `${Math.random() * 12}s`,
+      duration: `${15 + Math.random() * 20}s`,
+      size: `${2 + Math.random() * 3}px`,
+    }));
+    setDustParticles(particles);
+  }, []);
+
+  const handleTabChange = (tab) => {
+    if (tab === activeTab) return;
+    setIsWarping(true);
+    setTimeout(() => {
+      setActiveTab(tab);
+    }, 450); // apex of 3D camera warp
+    setTimeout(() => {
+      setIsWarping(false);
+    }, 1100); // end of warp glide
+  };
+
   const sensing = useWifiSensing();
 
   const audioCtxRef = useRef(null);
@@ -29,7 +59,6 @@ export default function Home() {
   const security = sensing.analysis?.security || {};
   const isTriggered = security.triggered;
 
-  // Apply active theme class to document body to trigger dynamic variables
   const [sirenEnabled, setSirenEnabled] = useState(false);
   const audioRef = useRef(null);
 
@@ -51,6 +80,109 @@ export default function Home() {
     classes.forEach(c => document.body.classList.remove(c));
     document.body.classList.add(`theme-${theme}`);
   }, [theme]);
+
+  // Track dynamic cursor for cyber glowing dot
+  useEffect(() => {
+    const updateCursor = (e) => {
+      setCursorPos({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener("mousemove", updateCursor);
+    return () => window.removeEventListener("mousemove", updateCursor);
+  }, []);
+
+  // Magnetic Pull Physics effect for elements with .magnetic-pull class
+  useEffect(() => {
+    const handleMagneticMove = (e) => {
+      const elements = document.querySelectorAll(".magnetic-pull");
+      elements.forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        const elX = rect.left + rect.width / 2;
+        const elY = rect.top + rect.height / 2;
+        const deltaX = e.clientX - elX;
+        const deltaY = e.clientY - elY;
+        const distance = Math.hypot(deltaX, deltaY);
+
+        if (distance < 90) {
+          // Soft magnetic pull
+          el.style.transform = `translate(${deltaX * 0.16}px, ${deltaY * 0.16}px)`;
+          el.style.transition = "transform 0.08s cubic-bezier(0.25, 1, 0.5, 1)";
+        } else {
+          el.style.transform = "";
+          el.style.transition = "transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)";
+        }
+      });
+    };
+
+    window.addEventListener("mousemove", handleMagneticMove);
+    return () => window.removeEventListener("mousemove", handleMagneticMove);
+  }, [activeTab]);
+
+  // Spatial 3D Perspective Rotation Math on mouse move
+  const handleMouseMove = (e) => {
+    if (!is3DMode) return;
+    const { clientX, clientY } = e;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    // Calculate rotation degree coordinates (-8 to 8 deg)
+    const xRot = (clientX - w / 2) / (w / 2) * 6;
+    const yRot = -(clientY - h / 2) / (h / 2) * 6;
+    setRotation({ x: yRot, y: xRot });
+  };
+
+  useEffect(() => {
+    if (!is3DMode) {
+      setRotation({ x: 0, y: 0 });
+    }
+  }, [is3DMode]);
+
+  // Proactive high-performance mouse-reactive 3D tilt handler for all .tilt-card elements!
+  useEffect(() => {
+    const handleMouseMoveTilt = (e) => {
+      if (!is3DMode) return;
+      const cards = document.querySelectorAll(".tilt-card");
+      cards.forEach((card) => {
+        const rect = card.getBoundingClientRect();
+        // Skip if offscreen
+        if (
+          e.clientX < rect.left - 100 ||
+          e.clientX > rect.right + 100 ||
+          e.clientY < rect.top - 100 ||
+          e.clientY > rect.bottom + 100
+        ) {
+          card.style.transform = "";
+          card.style.boxShadow = "";
+          return;
+        }
+
+        const x = e.clientX - rect.left - rect.width / 2;
+        const y = e.clientY - rect.top - rect.height / 2;
+        
+        // Dynamic tilt calculation
+        const tiltX = -(y / (rect.height / 2)) * 6; // max 6 deg pitch
+        const tiltY = (x / (rect.width / 2)) * 6;   // max 6 deg roll
+        
+        card.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) translateZ(10px)`;
+        card.style.transition = "transform 0.1s ease-out, box-shadow 0.3s ease";
+        card.style.boxShadow = "0 20px 45px -15px rgba(0,0,0,0.5), 0 0 20px -5px var(--accent-glow)";
+      });
+    };
+
+    const handleMouseLeaveTilt = () => {
+      const cards = document.querySelectorAll(".tilt-card");
+      cards.forEach((card) => {
+        card.style.transform = "";
+        card.style.boxShadow = "";
+        card.style.transition = "transform 0.5s ease-out, box-shadow 0.5s ease";
+      });
+    };
+
+    window.addEventListener("mousemove", handleMouseMoveTilt);
+    window.addEventListener("mouseleave", handleMouseLeaveTilt);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMoveTilt);
+      window.removeEventListener("mouseleave", handleMouseLeaveTilt);
+    };
+  }, [is3DMode, activeTab]);
 
   // Initialize and modulate Siren Alarm synthesizer using Web Audio API
   useEffect(() => {
@@ -128,22 +260,55 @@ export default function Home() {
 
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
+    <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300 relative select-none">
+      
+      {/* 3D Immersive Fluid Backdrop Canvas */}
+      <SpatialBackground theme={theme} />
+
+      {/* Volumetric Dynamic Fog overlay */}
+      <div className="volumetric-fog" />
+
+      {/* Glowing volumetric dust specification specs */}
+      {dustParticles.map((p) => (
+        <div
+          key={p.id}
+          className="dust-particle"
+          style={{
+            left: p.left,
+            animationDelay: p.delay,
+            animationDuration: p.duration,
+            width: p.size,
+            height: p.size,
+          }}
+        />
+      ))}
+
+      {/* Cyber Trailing Cursor Mesh */}
+      <div 
+        className="cyber-dot hidden md:block" 
+        style={{ left: cursorPos.x, top: cursorPos.y }} 
+      />
 
       {/* Visual threat warning boundary flashing overlay */}
       {isTriggered && (
         <div className="fixed inset-0 border-[6px] border-[var(--danger)] animate-pulse pointer-events-none z-50 bg-[var(--danger)]/[0.04]" />
       )}
 
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} connected={sensing.connected} mode={sensing.mode} />
+      <Sidebar activeTab={activeTab} setActiveTab={handleTabChange} connected={sensing.connected} mode={sensing.mode} />
 
-      <main className="flex-1 p-4 pl-2 pb-20 md:pb-4 overflow-y-auto flex flex-col gap-4">
+      <main 
+        onMouseMove={handleMouseMove}
+        className={`flex-1 p-4 pl-2 pb-20 md:pb-4 overflow-y-auto flex flex-col gap-4 z-10 transition-all duration-700 ${is3DMode ? "perspective-deck spatial-active" : ""} ${isWarping ? "camera-warping" : ""}`}
+        style={is3DMode ? { transform: `rotateX(${8 + rotation.x}deg) rotateY(${-6 + rotation.y}deg) scale(0.94) translateY(10px)` } : {}}
+      >
         <Header
           sensing={sensing}
           soundEnabled={soundEnabled}
           setSoundEnabled={setSoundEnabled}
           theme={theme}
           setTheme={setTheme}
+          is3DMode={is3DMode}
+          setIs3DMode={setIs3DMode}
         />
 
         {activeTab === "dashboard" && (
@@ -152,6 +317,11 @@ export default function Home() {
             selectedEntityId={selectedEntityId}
             setSelectedEntityId={setSelectedEntityId}
             theme={theme}
+            occupants={sensing.occupants || []}
+            onRegisterEntity={(entity) => {
+              sensing.updateOccupantDetails(entity.id, entity.name || `Target ${entity.id}`, "Visitor", "", "Unspecified", "Normal Vitals", 30, 72, "Auto-registered from live spatial scan.");
+              handleTabChange("occupants");
+            }}
           />
         )}
         {activeTab === "floorplan" && <FloorplanView analysis={sensing.analysis} />}
@@ -180,17 +350,31 @@ export default function Home() {
   );
 }
 
-function Header({ sensing, soundEnabled, setSoundEnabled, theme, setTheme }) {
+function Header({ sensing, soundEnabled, setSoundEnabled, theme, setTheme, is3DMode, setIs3DMode }) {
   const security = sensing.analysis?.security || {};
   return (
     <header className="flex flex-col md:flex-row justify-between items-stretch md:items-center bg-[var(--bg-card)] border border-[var(--border-glass)] p-4 md:px-4 md:py-3 rounded-2xl backdrop-blur-md transition-all duration-300 gap-3">
       <div className="text-center md:text-left">
-        <h1 className="text-lg md:text-xl font-bold tracking-tight bg-gradient-to-r from-[var(--text-primary)] to-[var(--text-secondary)] bg-clip-text text-transparent">Home Guardian Spatial Analytics</h1>
+        <h1 className="text-lg md:text-xl font-extrabold tracking-tight text-glimmer">Home Guardian Spatial Analytics</h1>
         <p className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
           {sensing.connected ? `Live WiFi CSI sensing pipeline • Frame #${sensing.telemetry?.frame || 0}` : "Connecting to sensing server..."}
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-center md:justify-end gap-2.5">
+        {/* Spatial 3D Immersive Toggle */}
+        <button
+          onClick={() => setIs3DMode(!is3DMode)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border transition-all duration-300 shadow-[0_0_15px_rgba(0,0,0,0.2)] cursor-pointer select-none ${
+            is3DMode 
+              ? "bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-500 border-cyan-400/40 text-white shadow-[0_0_20px_rgba(59,130,246,0.4)]"
+              : "bg-black/40 border-[var(--border-glass)] text-[var(--text-secondary)] hover:text-white hover:border-white/20"
+          }`}
+          title="Toggle 3D Immersive Spatial Projection View"
+        >
+          <Layers size={12} className={is3DMode ? "animate-pulse" : ""} />
+          {is3DMode ? "SPATIAL 3D: ENABLED" : "SPATIAL 3D: DISABLED"}
+        </button>
+
         {/* Theme Switcher Selector */}
         <div className="flex items-center gap-1.5 border-r border-[var(--border-glass)] pr-3 mr-1">
           <Palette size={13} className="text-[var(--text-secondary)] animate-pulse" />
@@ -255,7 +439,7 @@ function Header({ sensing, soundEnabled, setSoundEnabled, theme, setTheme }) {
   );
 }
 
-function DashboardView({ sensing, selectedEntityId, setSelectedEntityId, theme }) {
+function DashboardView({ sensing, selectedEntityId, setSelectedEntityId, theme, occupants, onRegisterEntity }) {
   const entities = sensing.analysis?.entities || [];
   const selectedEntity = entities.find(e => e.id === selectedEntityId) || entities[0];
   const effectiveSelectedEntityId = selectedEntity?.id || null;
@@ -272,6 +456,8 @@ function DashboardView({ sensing, selectedEntityId, setSelectedEntityId, theme }
             selectedEntityId={effectiveSelectedEntityId}
             onSelectEntity={setSelectedEntityId}
             theme={theme}
+            occupants={occupants}
+            onRegisterEntity={onRegisterEntity}
           />
           <PoseReconstructor entity={selectedEntity} theme={theme} />
         </div>
@@ -300,7 +486,7 @@ function SecurityView({ sensing, soundEnabled, setSoundEnabled }) {
   const entities = sensing.analysis?.entities || [];
 
   return (
-    <div className="glass p-5 rounded-2xl flex-1 flex flex-col gap-5 bg-white/[0.01]">
+    <div className="glass tilt-card layer-top p-5 rounded-2xl flex-1 flex flex-col gap-5 bg-white/[0.01]">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[var(--border-glass)] pb-3">
         <div>
           <h3 className="text-base font-semibold">Armed Perimeter Guard & Intrusion Radar</h3>
@@ -591,9 +777,56 @@ function MqttIntegratorPanel({ sensing }) {
   );
 }
 
+function DuplicateSecurityView({ sensing, soundEnabled, setSoundEnabled }) {
+  const security = sensing.analysis?.security || {};
+  const entities = sensing.analysis?.entities || [];
+
+  return (
+    <div className="glass tilt-card layer-top p-5 rounded-2xl flex-1 flex flex-col gap-5 bg-white/[0.01]">
+      <div className="flex justify-between items-center border-b border-white/10 pb-3">
+        <div className="flex items-center gap-2">
+          <ShieldAlert className="text-[var(--accent)] animate-pulse" />
+          <h2 className="text-sm font-bold tracking-tight text-white font-mono uppercase">Intrusion Stance Workspace</h2>
+        </div>
+        <span className="text-[9px] font-mono text-[var(--text-muted)]">ACTIVE SHIELD DEFENSE</span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_250px] gap-5 flex-1 min-h-0">
+        <div className="flex flex-col gap-3 min-h-0">
+          <div className="border border-white/5 bg-black/40 p-4 rounded-xl flex-1 flex flex-col gap-3">
+            <h3 className="text-xs font-bold text-white font-mono uppercase">Dynamic Signal Scattering Vector</h3>
+            <div className="flex-1 min-h-[150px] border border-dashed border-white/15 rounded-lg flex items-center justify-center relative overflow-hidden bg-black/60">
+              <div className="scan-line-anim" />
+              <div className="radar-scanner" />
+              <div className="radar-wave" />
+              <span className="text-[10px] font-mono text-[var(--accent)] bg-black/60 px-3 py-1.5 rounded-full border border-white/10 z-10 animate-pulse">
+                PERIMETER SCANNING RANGE: 15m RADIAL SPHERE
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div className="border border-white/5 bg-black/40 p-4 rounded-xl flex flex-col gap-3">
+            <h3 className="text-xs font-bold text-white font-mono uppercase">Perimeter Stance</h3>
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between items-center bg-black/40 border border-white/5 p-2.5 rounded">
+                <span className="text-[10px] font-mono text-gray-400">Threat Index</span>
+                <span className={`text-[10px] font-mono font-bold ${security.triggered ? "text-red-400 animate-pulse" : "text-green-400"}`}>
+                  {security.triggered ? "CRITICAL ALERT" : "ZERO ANOMALIES"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StatCard({ label, value, sub, color }) {
   return (
-    <div className="glass p-4 rounded-xl bg-black/25 flex flex-col justify-between">
+    <div className="glass tilt-card layer-high p-4 rounded-xl bg-black/25 flex flex-col justify-between">
       <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-semibold block">{label}</span>
       <span className="text-xl font-bold font-mono mt-1 block" style={{ color }}>{value}</span>
       <span className="text-[10px] text-[var(--text-secondary)] mt-0.5 block leading-tight">{sub}</span>
@@ -639,7 +872,7 @@ Prompt: Write a strict maximum 2-sentence highly professional AI Security & Biom
   };
 
   return (
-    <div className="glass p-4 rounded-xl bg-gradient-to-br from-[var(--accent)]/10 to-black/40 border border-[var(--accent)]/30 flex flex-col gap-2 relative overflow-hidden flex-shrink-0">
+    <div className="glass tilt-card layer-mid p-4 rounded-xl bg-gradient-to-br from-[var(--accent)]/10 to-black/40 border border-[var(--accent)]/30 flex flex-col gap-2 relative overflow-hidden flex-shrink-0">
       <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-[var(--accent)]/50 to-transparent animate-pulse" />
       <div className="flex justify-between items-center">
         <h4 className="text-[10px] font-mono text-[var(--accent)] uppercase font-bold flex items-center gap-1.5 shadow-[0_0_10px_rgba(59,130,246,0.3)]">

@@ -1,4 +1,4 @@
-import { getDB } from "./db.js";
+import { getDB, invalidateAndRecoverDbAfterCorruption } from "./db.js";
 
 // ─── Analytics Configuration ──────────────────────────────────────────
 const SNAPSHOT_INTERVAL_MS = 30000;   // Save vital snapshots every 30s
@@ -166,8 +166,9 @@ export async function saveVitalSnapshots(entities) {
         params
       );
     });
-  }).catch((err) => {
+  }).catch(async (err) => {
     console.error("❌ [Analytics] Snapshot save error:", err?.message || String(err));
+    await invalidateAndRecoverDbAfterCorruption(err);
   });
 }
 
@@ -199,8 +200,9 @@ export async function trackActivity(entities) {
         }
       }
     });
-  }).catch((err) => {
+  }).catch(async (err) => {
     console.error("❌ [Analytics] Activity tracking error:", err?.message || String(err));
+    await invalidateAndRecoverDbAfterCorruption(err);
   });
 }
 
@@ -264,8 +266,9 @@ export async function detectAnomalies(entities) {
         }
       }
     });
-  }).catch((err) => {
+  }).catch(async (err) => {
     console.error("❌ [Analytics] Anomaly detection error:", err?.message || String(err));
+    await invalidateAndRecoverDbAfterCorruption(err);
   });
 }
 
@@ -352,6 +355,7 @@ export async function computeDailySummaries() {
       console.log("📊 [Analytics] Daily summaries computed for", occupants.length, "occupants.");
     } catch (err) {
       console.error("❌ [Analytics] Daily summary error:", err?.message || String(err));
+      await invalidateAndRecoverDbAfterCorruption(err);
     }
   });
 }

@@ -197,12 +197,27 @@ export default function OccupantsRegistry({ sensing }) {
           );
         })}
 
-        {/* Informational Whitelisting Prompt */}
-        <div className="glass p-5 rounded-xl border border-dashed border-white/10 flex flex-col justify-center items-center text-center bg-black/5 min-h-[220px]">
-          <Activity size={32} className="text-[var(--text-muted)] animate-pulse mb-3" />
-          <h4 className="text-xs font-bold text-gray-400">Add New surveillance target</h4>
+        {/* Informational Whitelisting Prompt & Add Button */}
+        <div 
+          onClick={() => {
+            setEditingOccupant({ id: `target-${Date.now()}`, isNew: true });
+            setEditName("");
+            setEditRelationship("Visitor");
+            setEditContactInfo("");
+            setEditGender("Unspecified");
+            setEditHealthStatus("Normal Vitals");
+            setEditAge(30);
+            setEditTargetBpm(72);
+            setEditNotes("");
+          }}
+          className="glass p-5 rounded-xl border border-dashed border-white/20 hover:border-cyan-500/50 hover:bg-cyan-500/5 cursor-pointer flex flex-col justify-center items-center text-center transition-all min-h-[220px]"
+        >
+          <div className="w-12 h-12 rounded-full bg-cyan-500/10 flex items-center justify-center mb-3">
+            <Plus size={24} className="text-cyan-400" />
+          </div>
+          <h4 className="text-xs font-bold text-gray-300">Add New Surveillance Target</h4>
           <p className="text-[10px] text-[var(--text-muted)] mt-1.5 max-w-[200px] leading-relaxed">
-            Targets are systematically classified upon spatial Doppler biometrics calibration automatically. Add or modify above.
+            Manually register a new occupant profile for Doppler biometric tracking and vitals surveillance.
           </p>
         </div>
       </div>
@@ -220,7 +235,9 @@ export default function OccupantsRegistry({ sensing }) {
 
             <div className="flex items-center gap-2 border-b border-white/5 pb-3 mb-4">
               <UserCheck size={18} className="text-cyan-400" />
-              <h3 className="text-sm font-bold text-gray-200 font-mono">Surveillance Profile Editor: {editingOccupant.id.toUpperCase()}</h3>
+              <h3 className="text-sm font-bold text-gray-200 font-mono">
+                {editingOccupant.isNew ? "New Surveillance Profile" : `Surveillance Profile Editor: ${editingOccupant.id.toUpperCase()}`}
+              </h3>
             </div>
 
             <form onSubmit={handleSave} className="flex flex-col gap-4">

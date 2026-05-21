@@ -2,11 +2,32 @@
 import { useState, useEffect } from "react";
 import { Wifi, User, Cat, Dog, Fan, ShieldAlert, AlertTriangle, HelpCircle, Activity, Skull } from "lucide-react";
 
-export default function RadarMap({ telemetry, analysis, selectedEntityId, onSelectEntity }) {
+export default function RadarMap({ telemetry, analysis, selectedEntityId, onSelectEntity, occupants, onRegisterEntity }) {
   const isMotion = telemetry?.motion;
   const entities = analysis?.entities || [];
   const security = analysis?.security || {};
   const [trails, setTrails] = useState({});
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleRadarMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    setTilt({
+      x: -(y / (rect.height / 2)) * 6, // max 6 degrees pitch
+      y: (x / (rect.width / 2)) * 6   // max 6 degrees roll
+    });
+  };
+
+  const handleRadarMouseLeave = () => {
+    setTilt({ x: 0, y: 0 });
+    setIsHovered(false);
+  };
+
+  const handleRadarMouseEnter = () => {
+    setIsHovered(true);
+  };
   useEffect(() => {
     if (!entities || entities.length === 0) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -78,7 +99,18 @@ export default function RadarMap({ telemetry, analysis, selectedEntityId, onSele
   };
 
   return (
-    <section className="glass p-5 flex-grow flex flex-col min-h-[400px]">
+    <section 
+      onMouseMove={handleRadarMouseMove}
+      onMouseEnter={handleRadarMouseEnter}
+      onMouseLeave={handleRadarMouseLeave}
+      style={{
+        transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) translateZ(${isHovered ? 15 : 0}px)`,
+        boxShadow: isHovered ? "0 25px 60px -15px rgba(0,0,0,0.65), 0 0 35px -5px var(--accent-glow)" : "",
+        transition: "transform 0.15s ease-out, box-shadow 0.3s ease",
+        transformStyle: "preserve-3d"
+      }}
+      className="glass p-5 flex-grow flex flex-col min-h-[400px]"
+    >
       <style jsx global>{`
         @keyframes radar-sweep {
           from { transform: translate(-50%, -50%) rotate(0deg); }
@@ -114,7 +146,7 @@ export default function RadarMap({ telemetry, analysis, selectedEntityId, onSele
         </div>
       </div>
 
-      <div className={`relative flex-1 bg-[var(--bg-secondary)] rounded-xl overflow-hidden border ${isMotion ? "border-[var(--warning)]/50" : "border-[var(--border-glass)]"} shadow-[inset_0_0_60px_rgba(0,0,0,0.95)] min-h-[300px]`} style={{ transition: "border-color 0.3s" }}>
+      <div className={`relative flex-1 bg-[var(--bg-secondary)] rounded-xl overflow-hidden border ${isMotion ? "border-[var(--warning)]/50" : "border-[var(--border-glass)]"} shadow-[inset_0_0_60px_rgba(0,0,0,0.95)] min-h-[300px] layer-mid`} style={{ transition: "border-color 0.3s", transformStyle: "preserve-3d" }}>
         {/* Polar degree grids and sweep rings */}
         <div className="absolute inset-0 z-0 opacity-40 pointer-events-none">
           {/* Radial Lines */}
@@ -252,14 +284,16 @@ export default function RadarMap({ telemetry, analysis, selectedEntityId, onSele
           })}
         </svg>
 
-        {/* Detected Targets */}
+      {/* Detected Targets */}
         {entities.map((e) => {
           const isSelected = e.id === selectedEntityId;
+          const isRegistered = occupants?.some(occ => occ.id === e.id);
+          
           return (
             <div 
               key={e.id} 
               onClick={() => onSelectEntity(e.id)}
-              className="absolute z-20 -translate-x-1/2 -translate-y-1/2 cursor-pointer group" 
+              className="absolute z-20 -translate-x-1/2 -translate-y-1/2 cursor-pointer group layer-top" 
               style={{ left: `${e.x}%`, top: `${e.y}%`, transition: "left 1.2s cubic-bezier(0.25, 0.8, 0.25, 1), top 1.2s cubic-bezier(0.25, 0.8, 0.25, 1)" }}
             >
               {/* Highlight flashing selection ring */}
@@ -287,10 +321,10 @@ export default function RadarMap({ telemetry, analysis, selectedEntityId, onSele
               </div>
 
               {/* High-tech lock target tag HUD */}
-              <div className={`absolute left-9 top-1/2 -translate-y-1/2 bg-[var(--bg-secondary)] px-3 py-1.5 rounded-md text-[10px] whitespace-nowrap transition-all duration-300 border border-[var(--border-glass)] shadow-2xl z-30 ${
+              <div className={`absolute left-9 top-1/2 -translate-y-1/2 bg-[var(--bg-secondary)] px-3 py-2 rounded-md text-[10px] whitespace-nowrap transition-all duration-300 border border-[var(--border-glass)] shadow-2xl z-30 ${
                 isSelected ? "opacity-100 scale-100 visible" : "opacity-0 scale-90 invisible group-hover:opacity-100 group-hover:scale-100 group-hover:visible"
               }`}>
-                <div className="flex flex-col gap-0.5">
+                <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-1.5">
                     <span className={`w-1.5 h-1.5 rounded-full ${
                       e.status === 'critical' ? 'bg-[var(--danger)] animate-pulse' :
@@ -307,7 +341,22 @@ export default function RadarMap({ telemetry, analysis, selectedEntityId, onSele
                     <span className="text-[9px] text-[var(--warning)] font-mono">{e.vitals.breathingRate} Hz (Vib)</span>
                   )}
                   {e.biometrics?.ageEst && (
-                    <span className="text-[8px] text-[var(--text-muted)] font-mono">Class: {e.biometrics.classification}</span>
+                    <span className="text-[8px] text-[var(--text-muted)] font-mono border-b border-[var(--border-glass)] pb-1">
+                      Class: {e.biometrics.classification}
+                    </span>
+                  )}
+                  
+                  {/* Register action button for unregistered targets */}
+                  {!isRegistered && e.type !== 'appliance' && (
+                    <button
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        if (onRegisterEntity) onRegisterEntity(e);
+                      }}
+                      className="mt-1 flex items-center justify-center gap-1.5 w-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 py-1 rounded text-[9px] font-bold tracking-wider transition-all"
+                    >
+                      <User size={10} /> QUICK REGISTER
+                    </button>
                   )}
                 </div>
               </div>

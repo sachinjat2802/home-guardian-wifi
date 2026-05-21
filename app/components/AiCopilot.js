@@ -1,9 +1,56 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Sparkles, Send, Bot, User, Trash2, Cpu, Shield, Activity, RefreshCw, Layers, Compass, BarChart, Hand, Footprints, TrendingDown, PawPrint, Crosshair, Moon, Thermometer, Eye, Users, Sliders, Network, ClipboardList, Accessibility, BrainCircuit, Filter, Mic } from "lucide-react";
+import { Sparkles, Send, Bot, User, Trash2, Cpu, Shield, Activity, RefreshCw, Layers, Compass, BarChart, Hand, Footprints, TrendingDown, PawPrint, Crosshair, Moon, Thermometer, Eye, Users, Sliders, Network, ClipboardList, Accessibility, BrainCircuit, Filter, Mic, X, MessageCircle } from "lucide-react";
 import AgentWorkspace from "./AgentWorkspace";
 
+function formatInline(str) {
+  return str
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-bold">$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em class="text-gray-300 italic">$1</em>')
+    .replace(/`(.*?)`/g, '<code class="bg-black/50 text-cyan-400 px-1 py-0.5 rounded border border-white/10 font-mono text-[10px]">$1</code>')
+    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" class="text-cyan-400 hover:underline hover:text-cyan-300 transition-colors">$1</a>');
+}
+
+const RenderMarkdown = ({ text }) => {
+  if (!text) return null;
+  const lines = text.split('\n');
+  return (
+    <div className="flex flex-col gap-1.5 leading-relaxed font-sans text-sm tracking-wide">
+      {lines.map((line, i) => {
+        let content = line;
+        
+        if (line.startsWith('### ')) return <h3 key={i} className="text-[13px] font-bold text-white mt-2 mb-1 tracking-wider uppercase border-b border-white/10 pb-1">{line.replace('### ', '')}</h3>;
+        if (line.startsWith('## ')) return <h2 key={i} className="text-sm font-bold text-white mt-2 mb-1">{line.replace('## ', '')}</h2>;
+        if (line.startsWith('# ')) return <h1 key={i} className="text-base font-bold text-cyan-400 mt-2 mb-1">{line.replace('# ', '')}</h1>;
+        
+        if (line.startsWith('- ') || line.startsWith('* ')) {
+          content = line.substring(2);
+          return <div key={i} className="flex gap-2 items-start ml-2 my-0.5"><span className="text-cyan-500 font-bold mt-0.5 text-[10px]">■</span><span dangerouslySetInnerHTML={{ __html: formatInline(content) }} /></div>;
+        }
+        
+        if (/^\d+\.\s/.test(line)) {
+          const match = line.match(/^(\d+\.)\s(.*)/);
+          return <div key={i} className="flex gap-2 items-start ml-2 my-0.5"><span className="text-cyan-500 font-mono font-bold text-xs mt-0.5">{match[1]}</span><span dangerouslySetInnerHTML={{ __html: formatInline(match[2]) }} /></div>;
+        }
+        
+        if (line.startsWith('> ')) {
+          return <blockquote key={i} className="border-l-2 border-cyan-500/50 pl-3 py-0.5 my-1 text-gray-400 italic bg-cyan-500/5 rounded-r">{formatInline(line.substring(2))}</blockquote>;
+        }
+
+        if (line.startsWith('---')) {
+          return <div key={i} className="h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent my-2" />;
+        }
+
+        if (!line.trim()) return <div key={i} className="h-1" />;
+
+        return <p key={i} className="text-gray-300" dangerouslySetInnerHTML={{ __html: formatInline(content) }} />;
+      })}
+    </div>
+  );
+};
+
 export default function AiCopilot({ sensing }) {
+  const [isOpen, setIsOpen] = useState(false);
   const [activeMode, setActiveMode] = useState("chat"); // 'chat' | 'calibrate' | 'clinical'
   const [messages, setMessages] = useState([
     {
@@ -1061,7 +1108,49 @@ TASK:
   };
 
   return (
-    <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-hidden h-full">
+    <>
+      {/* Floating Toggle Button */}
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 p-3.5 rounded-full shadow-[0_0_25px_rgba(59,130,246,0.6)] border border-white/20 hover:scale-110 active:scale-95 transition-all duration-300 group cursor-pointer"
+          title="Open Spatial Copilot"
+        >
+          <Bot size={22} className="text-white animate-bounce group-hover:animate-none" />
+          <Sparkles size={14} className="text-cyan-200 absolute -top-1 -right-1 animate-pulse" />
+          <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 ease-in-out text-xs font-mono text-white font-bold whitespace-nowrap">
+            SPATIAL COPILOT
+          </span>
+        </button>
+      )}
+
+      {/* Slide-over Drawer Panel */}
+      <div className={`fixed right-2 sm:right-4 top-4 bottom-20 md:bottom-4 z-50 w-[calc(100%-1rem)] sm:w-[500px] xl:w-[600px] bg-[#0c0f16]/80 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.6),inset_0_0_0_1px_rgba(255,255,255,0.05)] flex flex-col transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] transform ${isOpen ? "translate-x-0 opacity-100 scale-100" : "translate-x-[120%] opacity-0 scale-95 pointer-events-none"}`}>
+        {/* Drawer Header */}
+        <div className="flex justify-between items-center p-4 border-b border-white/10 bg-gradient-to-r from-black/60 to-black/20 rounded-t-2xl flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-blue-600 to-cyan-500 flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.4)] border border-white/20">
+              <Bot size={18} className="text-white animate-pulse" />
+            </div>
+            <div className="flex flex-col">
+              <h3 className="text-[13px] font-bold tracking-tight text-white font-sans flex items-center gap-1.5 uppercase">
+                Home Guardian Copilot <Sparkles size={12} className="text-cyan-400" />
+              </h3>
+              <p className="text-[10px] font-mono text-cyan-400/80 tracking-wide">NVIDIA Nemotron-3 Super 120B</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="p-2 bg-white/5 hover:bg-white/15 rounded-xl border border-white/5 hover:border-white/20 text-gray-400 hover:text-white transition-all cursor-pointer shadow-sm"
+            title="Close Copilot"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Drawer Content Body */}
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 min-h-0 bg-black/20">
+          <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-hidden h-full">
       
       {/* Top Smart Workspace Tab bar */}
       <div className="flex overflow-x-auto scrollbar-thin bg-black/40 border border-[var(--border-glass)] p-1 rounded-xl gap-1.5 flex-shrink-0 pb-1.5">
@@ -1357,13 +1446,17 @@ TASK:
                     </div>
 
                     <div
-                      className={`p-3 md:p-3.5 rounded-2xl text-xs font-mono border leading-relaxed break-words whitespace-pre-wrap ${
+                      className={`p-3 md:p-4 rounded-2xl border leading-relaxed break-words whitespace-pre-wrap ${
                         msg.role === "user"
-                          ? "bg-[var(--accent)]/10 border-[var(--accent)]/20 text-white rounded-tr-none shadow-[0_0_15px_rgba(59,130,246,0.05)]"
-                          : "bg-black/40 border-white/5 text-gray-300 rounded-tl-none"
+                          ? "bg-gradient-to-br from-[var(--accent)]/15 to-[var(--accent)]/5 border-[var(--accent)]/30 text-white rounded-tr-none shadow-[0_0_20px_rgba(59,130,246,0.1)] font-sans text-sm tracking-wide"
+                          : "bg-black/60 backdrop-blur-md border-white/10 text-gray-300 rounded-tl-none shadow-[0_4px_20px_rgba(0,0,0,0.4)]"
                       }`}
                     >
-                      {msg.content}
+                      {msg.role === "user" ? (
+                        msg.content
+                      ) : (
+                        <RenderMarkdown text={msg.content} />
+                      )}
                     </div>
                   </div>
                 ))}
@@ -2957,9 +3050,10 @@ TASK:
             `}
           />
         )}
-
+          </div>
+        </div>
       </div>
-
     </div>
-  );
+  </>
+);
 }

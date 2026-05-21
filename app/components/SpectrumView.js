@@ -1,9 +1,30 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function SpectrumView({ analysis, theme }) {
   const canvasRef = useRef(null);
   const heatmapRef = useRef(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    setTilt({
+      x: -(y / (rect.height / 2)) * 5, // max 5 degrees pitch
+      y: (x / (rect.width / 2)) * 5   // max 5 degrees roll
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setTilt({ x: 0, y: 0 });
+    setIsHovered(false);
+  };
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+  };
 
   useEffect(() => {
     if (!analysis?.spectrum) return;
@@ -119,7 +140,18 @@ export default function SpectrumView({ analysis, theme }) {
   const cls = analysis?.classification || {};
 
   return (
-    <div className="glass p-6 flex-1 flex flex-col">
+    <div 
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) translateZ(${isHovered ? 15 : 0}px)`,
+        boxShadow: isHovered ? "0 25px 60px -15px rgba(0,0,0,0.65), 0 0 35px -5px var(--accent-glow)" : "",
+        transition: "transform 0.15s ease-out, box-shadow 0.3s ease",
+        transformStyle: "preserve-3d"
+      }}
+      className="glass p-6 flex-1 flex flex-col"
+    >
       <div className="flex justify-between items-center mb-4">
         <div>
           <h3 className="text-lg font-semibold">CSI Spectrum Analyzer</h3>

@@ -18,10 +18,23 @@ function safeRenameCorruptFile(dbPath) {
     if (!fs.existsSync(dbPath)) return;
     const ts = new Date().toISOString().replace(/[:.]/g, "-");
     const corruptPath = `${dbPath}.corrupt-${ts}`;
-    fs.renameSync(dbPath, corruptPath);
-    console.warn(`⚠️ [Database] Renamed corrupted DB: ${dbPath} -> ${corruptPath}`);
+    try {
+      fs.renameSync(dbPath, corruptPath);
+      console.warn(`⚠️ [Database] Renamed corrupted DB: ${dbPath} -> ${corruptPath}`);
+    } catch (renameErr) {
+      // Truncate the file to zero bytes if standard renameSync fails due to active file locks.
+      fs.writeFileSync(dbPath, "");
+      console.warn(`⚠️ [Database] Rename failed; truncated corrupted DB file to 0 bytes instead: ${dbPath}`);
+    }
+
+    // ALWAYS clean up associated WAL and SHM log files to prevent old logs from corrupting the new db
+    try {
+      if (fs.existsSync(`${dbPath}-wal`)) fs.unlinkSync(`${dbPath}-wal`);
+      if (fs.existsSync(`${dbPath}-shm`)) fs.unlinkSync(`${dbPath}-shm`);
+      console.warn(`⚠️ [Database] Cleaned up associated WAL/SHM locks.`);
+    } catch (e) {}
   } catch (e) {
-    console.warn("⚠️ [Database] Failed to rename corrupted DB file:", e?.message || String(e));
+    console.warn("⚠️ [Database] Failed to recover/rename corrupted DB file:", e?.message || String(e));
   }
 }
 
@@ -34,15 +47,35 @@ async function openDbWithRecovery(dbPath) {
         filename: dbPath,
         driver: sqlite3.Database,
       });
+
+      // Proactive integrity checks to flush out malformed page tables
+      await db.get("SELECT COUNT(*) FROM sqlite_master;");
+      try {
+        await db.get("SELECT * FROM telemetry LIMIT 1;");
+        await db.get("SELECT * FROM occupants LIMIT 1;");
+      } catch (checkErr) {
+        if (looksLikeSqliteCorruption(checkErr)) {
+          console.warn("⚠️ [Database] Proactive query check detected page level corruption!");
+          throw checkErr;
+        }
+      }
+
       console.log(`\u001b[36m\u001b[1m[Database] Opened DB:\u001b[0m ${dbPath}`);
       return db;
     } catch (err) {
       if (!looksLikeSqliteCorruption(err)) throw err;
 
       console.warn(
-        `\u001b[33m\u001b[1m[Database] Detected corruption on open:\u001b[0m ${dbPath} - ${err?.message || String(err)}`
+        `\u001b[33m\u001b[1m[Database] Detected corruption on open/query check:\u001b[0m ${dbPath} - ${err?.message || String(err)}`
       );
+      
       safeRenameCorruptFile(dbPath);
+
+      // Clean up auxiliary WAL/SHM locks to avoid locks
+      try {
+        if (fs.existsSync(`${dbPath}-wal`)) fs.unlinkSync(`${dbPath}-wal`);
+        if (fs.existsSync(`${dbPath}-shm`)) fs.unlinkSync(`${dbPath}-shm`);
+      } catch (e) {}
 
       const db = await open({
         filename: dbPath,
@@ -206,7 +239,7 @@ function withDbWriteLock(fn) {
   return dbWriteLockPromise;
 }
 
-async function invalidateAndRecoverDbAfterCorruption(error) {
+export async function invalidateAndRecoverDbAfterCorruption(error) {
   if (!looksLikeSqliteCorruption(error)) return false;
 
   const dbPath = path.resolve(process.cwd(), "wifi_guardian.db");

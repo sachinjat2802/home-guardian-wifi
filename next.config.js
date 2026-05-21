@@ -6,4 +6,5 @@ const nextConfig = {
 };
 
 
-module.exports = nextConfig;
+export default nextConfig;
+// Force Next.js HMR Server reload - touch config 4

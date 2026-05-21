@@ -1,13 +1,46 @@
 "use client";
+import { useState } from "react";
 
 export default function SnnPanel({ analysis, snnConfig }) {
   const snn = analysis?.snn || {};
   const output = snn.output || {};
   const labels = snnConfig?.labels || ['presence', 'motion', 'breathing', 'heart_rate', 'phase_var', 'persons', 'fall', 'rssi'];
   const maxVal = Math.max(...Object.values(output), 0.001);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    setTilt({
+      x: -(y / (rect.height / 2)) * 5, // max 5 degrees pitch
+      y: (x / (rect.width / 2)) * 5   // max 5 degrees roll
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setTilt({ x: 0, y: 0 });
+    setIsHovered(false);
+  };
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+  };
 
   return (
-    <div className="glass p-6 flex-1 flex flex-col">
+    <div 
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) translateZ(${isHovered ? 15 : 0}px)`,
+        boxShadow: isHovered ? "0 25px 60px -15px rgba(0,0,0,0.65), 0 0 35px -5px var(--accent-glow)" : "",
+        transition: "transform 0.15s ease-out, box-shadow 0.3s ease",
+        transformStyle: "preserve-3d"
+      }}
+      className="glass p-6 flex-1 flex flex-col"
+    >
       <h3 className="text-lg font-semibold mb-1">Spiking Neural Network Engine</h3>
       <p className="text-xs text-[var(--text-muted)] mb-5">Real-time SNN inference on CSI subcarrier amplitude deltas with STDP online learning</p>
 
