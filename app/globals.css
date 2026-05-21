@@ -392,3 +392,69 @@ body {
   will-change: transform;
 }
 
+/* ─── Zero-Gravity Antigravity & Floating Caustics styling ───────────── */
+
+@keyframes zero-g-drift {
+  0% { transform: translateY(0px) translateX(0px); }
+  33% { transform: translateY(-5px) translateX(2px); }
+  66% { transform: translateY(3px) translateX(-2px); }
+  100% { transform: translateY(0px) translateX(0px); }
+}
+
+@keyframes zero-g-rotate {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(0.4deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.antigravity-drift {
+  animation: zero-g-drift 10s ease-in-out infinite, zero-g-rotate 12s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Atmospheric caustics shimmer */
+.caustic-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.caustic-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(125deg, transparent 40%, rgba(255, 255, 255, 0.05) 50%, transparent 60%);
+  background-size: 200% 200%;
+  animation: caustic-sweep 8s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes caustic-sweep {
+  0% { background-position: -200% -200%; }
+  100% { background-position: 200% 200%; }
+}
+
+/* Weightless text adjustments */
+.font-levitate {
+  letter-spacing: 0.05em;
+  font-weight: 300;
+  text-shadow: 0 0 12px rgba(255,255,255,0.15);
+}
+
+/* Premium Floating dynamic island navigation elements */
+.dynamic-island {
+  background: rgba(10, 14, 26, 0.4);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 
+    0 10px 40px -10px rgba(0,0,0,0.5), 
+    inset 0 1px 0px rgba(255,255,255,0.1);
+  transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.dynamic-island:hover {
+  border-color: rgba(59, 130, 246, 0.2);
+  box-shadow: 
+    0 15px 50px -5px rgba(0,0,0,0.6), 
+    0 0 25px -5px rgba(59, 130, 246, 0.15),
+    inset 0 1px 0px rgba(255,255,255,0.15);
+}
+

@@ -66,7 +66,7 @@ export default function Sidebar({ activeTab, setActiveTab, connected, mode }) {
   return (
     <>
       {/* Desktop Left Sidebar */}
-      <nav className="hidden md:flex w-[220px] glass m-3 mr-0 p-5 flex-col rounded-2xl">
+      <nav className="hidden md:flex w-[220px] dynamic-island m-3 mr-0 p-5 flex-col rounded-2xl antigravity-drift caustic-shimmer">
         <div className="flex items-center gap-3 mb-8">
           <Radio size={24} className="text-[var(--accent)]" />
           <h2 className="text-base font-bold tracking-tight">Home Guardian</h2>

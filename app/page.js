@@ -353,7 +353,7 @@ export default function Home() {
 function Header({ sensing, soundEnabled, setSoundEnabled, theme, setTheme, is3DMode, setIs3DMode }) {
   const security = sensing.analysis?.security || {};
   return (
-    <header className="flex flex-col md:flex-row justify-between items-stretch md:items-center bg-[var(--bg-card)] border border-[var(--border-glass)] p-4 md:px-4 md:py-3 rounded-2xl backdrop-blur-md transition-all duration-300 gap-3">
+    <header className="flex flex-col md:flex-row justify-between items-stretch md:items-center dynamic-island p-4 md:px-5 md:py-3 rounded-2xl transition-all duration-500 gap-3 antigravity-drift caustic-shimmer">
       <div className="text-center md:text-left">
         <h1 className="text-lg md:text-xl font-extrabold tracking-tight text-glimmer">Home Guardian Spatial Analytics</h1>
         <p className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
