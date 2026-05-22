@@ -122,6 +122,31 @@ export default function AiCopilot({ sensing }) {
   const [fusionReport, setFusionReport] = useState("");
   const [isAnalyzingFusion, setIsAnalyzingFusion] = useState(false);
 
+  // Speculative Domain States
+  const [agriReport, setAgriReport] = useState("");
+  const [isAnalyzingAgri, setIsAnalyzingAgri] = useState(false);
+
+  const [autoReport, setAutoReport] = useState("");
+  const [isAnalyzingAuto, setIsAnalyzingAuto] = useState(false);
+
+  const [defenseReport, setDefenseReport] = useState("");
+  const [isAnalyzingDefense, setIsAnalyzingDefense] = useState(false);
+
+  const [retailReport, setRetailReport] = useState("");
+  const [isAnalyzingRetail, setIsAnalyzingRetail] = useState(false);
+
+  const [industrialReport, setIndustrialReport] = useState("");
+  const [isAnalyzingIndustrial, setIsAnalyzingIndustrial] = useState(false);
+
+  const [paranormalReport, setParanormalReport] = useState("");
+  const [isAnalyzingParanormal, setIsAnalyzingParanormal] = useState(false);
+
+  const [disasterReport, setDisasterReport] = useState("");
+  const [isAnalyzingDisaster, setIsAnalyzingDisaster] = useState(false);
+
+  const [edgeReport, setEdgeReport] = useState("");
+  const [isAnalyzingEdge, setIsAnalyzingEdge] = useState(false);
+
   // Auto-scroll chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1098,6 +1123,279 @@ TASK:
     }
   };
 
+  // Speculative Domain Diagnostic Runners
+  const runAgriDiagnostics = async () => {
+    if (isAnalyzingAgri) return;
+    setIsAnalyzingAgri(true);
+    setAgriReport("");
+    const prompt = `
+You are the AetherSense Agricultural & Rural Enterprise Intelligence AI powered by NVIDIA Nemotron-3 Super 120B.
+Analyze crop canopy signal attenuation, livestock (cattle/buffalo) respiration logs, and perimeter predator boundary warnings.
+Formulate a complete report on livestock wellness, grain silo volumes, and potential nighttime intruder/predator presence.
+`;
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let reply = "";
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+          reply += decoder.decode(value);
+          setAgriReport(reply);
+        }
+      }
+    } catch (e) {
+      setAgriReport("❌ Agricultural mapping failed.");
+    } finally {
+      setIsAnalyzingAgri(false);
+    }
+  };
+
+  const runAutoDiagnostics = async () => {
+    if (isAnalyzingAuto) return;
+    setIsAnalyzingAuto(true);
+    setAutoReport("");
+    const prompt = `
+You are the AetherSense Automotive & Transportation Safety AI powered by NVIDIA Nemotron-3 Super 120B.
+Analyze vehicle passenger logs, in-cabin micro-breathing signals, driver drowsiness markers (respiration < 9 RPM), and pedestrian blind-spot alerts.
+Provide an automotive spatial threat brief.
+`;
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let reply = "";
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+          reply += decoder.decode(value);
+          setAutoReport(reply);
+        }
+      }
+    } catch (e) {
+      setAutoReport("❌ Automotive safety scan failed.");
+    } finally {
+      setIsAnalyzingAuto(false);
+    }
+  };
+
+  const runDefenseDiagnostics = async () => {
+    if (isAnalyzingDefense) return;
+    setIsAnalyzingDefense(true);
+    setDefenseReport("");
+    const prompt = `
+You are the AetherSense Tactical Security & Defense AI powered by NVIDIA Nemotron-3 Super 120B.
+Analyze through-wall body coordinate counts, hidden metal/weapon wave reflections, drone rotor frequency spectral anomalies, and laser-free vault mesh breaches.
+Formulate a secure tactical map briefing.
+`;
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let reply = "";
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+          reply += decoder.decode(value);
+          setDefenseReport(reply);
+        }
+      }
+    } catch (e) {
+      setDefenseReport("❌ Tactical mapping failed.");
+    } finally {
+      setIsAnalyzingDefense(false);
+    }
+  };
+
+  const runRetailDiagnostics = async () => {
+    if (isAnalyzingRetail) return;
+    setIsAnalyzingRetail(true);
+    setRetailReport("");
+    const prompt = `
+You are the AetherSense Commercial & Retail Spatial AI powered by NVIDIA Nemotron-3 Super 120B.
+Analyze aisle heat mapping indices, customer dwell times, fitting room privacy occupancies, and VIP customer gait metrics.
+Provide a commercial space optimization briefing.
+`;
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let reply = "";
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+          reply += decoder.decode(value);
+          setRetailReport(reply);
+        }
+      }
+    } catch (e) {
+      setRetailReport("❌ Commercial heat-mapping failed.");
+    } finally {
+      setIsAnalyzingRetail(false);
+    }
+  };
+
+  const runIndustrialDiagnostics = async () => {
+    if (isAnalyzingIndustrial) return;
+    setIsAnalyzingIndustrial(true);
+    setIndustrialReport("");
+    const prompt = `
+You are the AetherSense Industrial Automation & Warehouse Safety AI powered by NVIDIA Nemotron-3 Super 120B.
+Analyze worker fatigue repetitions, heavy machinery dangerous mesh zones, and forklift blind corner vectors.
+Provide an industrial workflow safety status sheet.
+`;
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let reply = "";
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+          reply += decoder.decode(value);
+          setIndustrialReport(reply);
+        }
+      }
+    } catch (e) {
+      setIndustrialReport("❌ Industrial safety analysis failed.");
+    } finally {
+      setIsAnalyzingIndustrial(false);
+    }
+  };
+
+  const runParanormalDiagnostics = async () => {
+    if (isAnalyzingParanormal) return;
+    setIsAnalyzingParanormal(true);
+    setParanormalReport("");
+    const prompt = `
+You are the AetherSense Speculative & Paranormal Activity Investigator powered by NVIDIA Nemotron-3 Super 120B.
+Analyze localized signal distortions ($\%\\Delta CSI$) and wave phase shifts ($80\\%+$ variance) occurring in locked environments where zero biological vital signs or heat signatures are recorded.
+Log unexplained environmental fluctuations and outline speculative explanations.
+`;
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let reply = "";
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+          reply += decoder.decode(value);
+          setParanormalReport(reply);
+        }
+      }
+    } catch (e) {
+      setParanormalReport("❌ Speculative scanning failed.");
+    } finally {
+      setIsAnalyzingParanormal(false);
+    }
+  };
+
+  const runDisasterDiagnostics = async () => {
+    if (isAnalyzingDisaster) return;
+    setIsAnalyzingDisaster(true);
+    setDisasterReport("");
+    const prompt = `
+You are the AetherSense Disaster Recovery & Emergency First Responder AI powered by NVIDIA Nemotron-3 Super 120B.
+Analyze earthquake rubble survivor micro-breathing, firefighter smoke navigation outlines, and avalanche victim depth matrices.
+Provide an emergency rescue briefing.
+`;
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let reply = "";
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+          reply += decoder.decode(value);
+          setDisasterReport(reply);
+        }
+      }
+    } catch (e) {
+      setDisasterReport("❌ Emergency scanning failed.");
+    } finally {
+      setIsAnalyzingDisaster(false);
+    }
+  };
+
+  const runEdgeDiagnostics = async () => {
+    if (isAnalyzingEdge) return;
+    setIsAnalyzingEdge(true);
+    setEdgeReport("");
+    const prompt = `
+You are the AetherSense Edge Computing & Autonomous AI Agent powered by NVIDIA Nemotron-3 Super 120B.
+Analyze mesh self-healing rerouting coefficients, edge alerts, companion virtual tracking vectors, and gaze UI display triggers.
+Provide an edge system optimization brief.
+`;
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let reply = "";
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+          reply += decoder.decode(value);
+          setEdgeReport(reply);
+        }
+      }
+    } catch (e) {
+      setEdgeReport("❌ Edge optimization failed.");
+    } finally {
+      setIsAnalyzingEdge(false);
+    }
+  };
+
   const clearChat = () => {
     setMessages([
       {
@@ -1397,6 +1695,102 @@ TASK:
               : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white"}`}
         >
           <Mic size={14} /> Voice Stress Analysis
+        </button>
+        <button
+          onClick={() => {
+            setActiveMode("spec_agri");
+            if (!agriReport) runAgriDiagnostics();
+          }}
+          className={`flex-none py-2 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all focus:outline-none
+            ${activeMode === "spec_agri" 
+              ? "bg-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]" 
+              : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white"}`}
+        >
+          <PawPrint size={14} /> Agriculture & Rural
+        </button>
+        <button
+          onClick={() => {
+            setActiveMode("spec_auto");
+            if (!autoReport) runAutoDiagnostics();
+          }}
+          className={`flex-none py-2 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all focus:outline-none
+            ${activeMode === "spec_auto" 
+              ? "bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]" 
+              : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white"}`}
+        >
+          <Sliders size={14} /> Automotive & Trans
+        </button>
+        <button
+          onClick={() => {
+            setActiveMode("spec_defense");
+            if (!defenseReport) runDefenseDiagnostics();
+          }}
+          className={`flex-none py-2 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all focus:outline-none
+            ${activeMode === "spec_defense" 
+              ? "bg-red-700 text-white shadow-[0_0_15px_rgba(185,28,28,0.3)]" 
+              : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white"}`}
+        >
+          <Shield size={14} /> Security & Defense
+        </button>
+        <button
+          onClick={() => {
+            setActiveMode("spec_retail");
+            if (!retailReport) runRetailDiagnostics();
+          }}
+          className={`flex-none py-2 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all focus:outline-none
+            ${activeMode === "spec_retail" 
+              ? "bg-amber-600 text-white shadow-[0_0_15px_rgba(217,119,6,0.3)]" 
+              : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white"}`}
+        >
+          <BarChart size={14} /> Retail & Commercial
+        </button>
+        <button
+          onClick={() => {
+            setActiveMode("spec_industrial");
+            if (!industrialReport) runIndustrialDiagnostics();
+          }}
+          className={`flex-none py-2 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all focus:outline-none
+            ${activeMode === "spec_industrial" 
+              ? "bg-teal-600 text-white shadow-[0_0_15px_rgba(13,148,136,0.3)]" 
+              : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white"}`}
+        >
+          <Cpu size={14} /> Industrial & Warehouse
+        </button>
+        <button
+          onClick={() => {
+            setActiveMode("spec_paranormal");
+            if (!paranormalReport) runParanormalDiagnostics();
+          }}
+          className={`flex-none py-2 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all focus:outline-none
+            ${activeMode === "spec_paranormal" 
+              ? "bg-purple-600 text-white shadow-[0_0_15px_rgba(147,51,234,0.3)]" 
+              : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white"}`}
+        >
+          <Bot size={14} /> Paranormal Investigation
+        </button>
+        <button
+          onClick={() => {
+            setActiveMode("spec_disaster");
+            if (!disasterReport) runDisasterDiagnostics();
+          }}
+          className={`flex-none py-2 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all focus:outline-none
+            ${activeMode === "spec_disaster" 
+              ? "bg-orange-600 text-white shadow-[0_0_15px_rgba(234,88,12,0.3)]" 
+              : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white"}`}
+        >
+          <Crosshair size={14} /> Disaster & Emergency
+        </button>
+        <button
+          onClick={() => {
+            setActiveMode("spec_edge");
+            if (!edgeReport) runEdgeDiagnostics();
+          }}
+          className={`flex-none py-2 px-3 rounded-lg text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all focus:outline-none
+            ${activeMode === "spec_edge" 
+              ? "bg-cyan-600 text-white shadow-[0_0_15px_rgba(8,145,178,0.3)]" 
+              : "text-[var(--text-secondary)] hover:bg-white/5 hover:text-white"}`}
+        >
+          <Network size={14} /> AI Agents & Edge
         </button>
       </div>
 
@@ -3033,21 +3427,219 @@ TASK:
             }
             prompt={`
 You are an Acoustic Distress & Voice Stress AI powered by NVIDIA Nemotron-3 Super 120B.
-Your task is to analyze biometric vocal parameters captured during an occupant&apos;s verbal query and correlate them with WiFi CSI spatial heart/respiration metrics for a multi-modal assessment.
+Your task is to analyze biometric vocal parameters captured during an occupant's query and correlate them with WiFi CSI spatial heart/respiration metrics for a multi-modal assessment.
 
 Acoustic Features:
-- Fundamental Frequency (F0): 242 Hz (normal baseline: 180-210 Hz, indicating acute vocal cord tension).
+- Fundamental Frequency (F0): 242 Hz (indicates acute vocal cord tension).
 - Jitter (pitch instability): 1.45% (Elevated autonomic activation).
 - Shimmer (amplitude perturbation): 4.2% (Moderate vocal tremor).
 - Respiration Pause Rate: Gasps every 4-5 words (correlates with WiFi phase respiration dips).
-- Autonomic Index: Significant high-frequency tremor indicating sympathetic nervous system activation.
 
 TASK:
-1. Explain the physiological link between autonomous nervous system (ANS) stress and the vocal tension observed in the pitch instability.
-2. Cross-reference acoustic tremors with respiratory gasp rates to identify signs of physical distress (such as dyspnea or cardiac hyper-activation).
+1. Explain the physiological link between autonomous nervous system (ANS) stress and the vocal tension.
+2. Cross-reference acoustic tremors with respiratory gasp rates.
 3. Deliver a clinical-grade Multi-Modal Autonomic Distress Index Report.
-4. Suggest direct wellness and safety interventions (e.g., box breathing coaching, hydration, or medical evaluation if secondary CSI vitals spike).
             `}
+          />
+        )}
+
+        {/* Speculative: Agriculture & Rural */}
+        {activeMode === "spec_agri" && (
+          <AgentWorkspace 
+            icon={PawPrint}
+            title="AetherSense Agricultural Intelligence"
+            themeColor="emerald"
+            buttonText="Scan Farm Perimeter"
+            reportTitle="Barn Livestock & Soil Moisture Telemetry"
+            reportSubtitle="Signal Attenuation (dB) • Crop Canopy Density Indices"
+            emptyStateText="Click **Scan Farm Perimeter** to analyze raw attenuation and Doppler scattering shifts across crop rows, grain silos, and livestock barns."
+            stats={[
+              { label: "Barn Resp Rate", value: "24 RPM (Cattle)", color: "text-emerald-400" },
+              { label: "Silo Capacity", value: "82% Volumetric" },
+              { label: "Predator Risk", value: "None Detected" }
+            ]}
+            visualFlair={
+              <div className="h-16 w-full bg-emerald-950/20 border border-emerald-500/20 rounded-lg flex items-center justify-between p-3 font-mono text-[9px] text-emerald-400">
+                <div>🌾 GREENHOUSE CANOPY: 96% HEALTHY</div>
+                <div>🚜 EQUIPMENT LOCK: SECURE</div>
+              </div>
+            }
+            prompt="You are the AetherSense Agricultural & Rural Enterprise Intelligence AI. Analyze crop canopy signal attenuation, livestock (cattle/buffalo) respiration logs, and perimeter predator alerts."
+          />
+        )}
+
+        {/* Speculative: Automotive */}
+        {activeMode === "spec_auto" && (
+          <AgentWorkspace 
+            icon={Sliders}
+            title="Automotive Safety & Driver Telemetry"
+            themeColor="blue"
+            buttonText="Evaluate Cabin Safety"
+            reportTitle="In-Car Presence & Driver Fatigue Analysis"
+            reportSubtitle="Subcarrier Breathing Waves • Autonomic Drowsiness Index"
+            emptyStateText="Click **Evaluate Cabin Safety** to scan for locked-car child breathing signatures or evaluate driver respiration patterns for fatigue."
+            stats={[
+              { label: "Child Presence", value: "Negative (0)", color: "text-blue-400" },
+              { label: "Driver Resp Rate", value: "14 RPM (Normal)" },
+              { label: "Carjack Threat", value: "Secure" }
+            ]}
+            visualFlair={
+              <div className="h-16 w-full bg-blue-950/20 border border-blue-500/20 rounded-lg flex items-center justify-between p-3 font-mono text-[9px] text-blue-400">
+                <div>🚗 VEHICLE BOUNDS: 1.2m AIR MESH</div>
+                <div>💤 FATIGUE TRACKER: SLEEP RATE CRITICAL ALERT ACTIVE</div>
+              </div>
+            }
+            prompt="You are the AetherSense Automotive Safety AI. Analyze in-cabin micro-breathing signals, driver fatigue respiration markers, and pedestrian blind-spot alerts."
+          />
+        )}
+
+        {/* Speculative: Security & Defense */}
+        {activeMode === "spec_defense" && (
+          <AgentWorkspace 
+            icon={Shield}
+            title="Tactical Security & Perimeter Defense"
+            themeColor="red"
+            buttonText="Conduct Tactical Sweep"
+            reportTitle="Through-Wall Target Mapping & Weapon Scan"
+            reportSubtitle="Voxel Grid Occupancy (x,y,z) • Metal Refraction Scatter"
+            emptyStateText="Click **Conduct Tactical Sweep** to run through-wall body counting algorithms or detect high-density hidden metal scattering."
+            stats={[
+              { label: "Through-Wall Count", value: "1 Active target", color: "text-red-400" },
+              { label: "Metal Index", value: "Unusual (High)" },
+              { label: "Vault Mesh Stance", value: "ARMED" }
+            ]}
+            visualFlair={
+              <div className="h-16 w-full bg-red-950/20 border border-red-500/20 rounded-lg flex items-center justify-between p-3 font-mono text-[9px] text-red-400">
+                <div>🧱 WALL PENETRATION: 24cm CONCRETE MAPPED</div>
+                <div>📡 DRONE ROTOR RADAR: NO TARGETS IN RANGE</div>
+              </div>
+            }
+            prompt="You are the AetherSense Tactical Defense AI. Analyze wall-penetration body counts, metallic weapon wave scatters, and drone frequency spectral anomalies."
+          />
+        )}
+
+        {/* Speculative: Retail */}
+        {activeMode === "spec_retail" && (
+          <AgentWorkspace 
+            icon={BarChart}
+            title="Retail Optimization & Aisle Heatmaps"
+            themeColor="amber"
+            buttonText="Evaluate Store Traffic"
+            reportTitle="Aisle Dwell Times & Commercial Real Estate Flow"
+            reportSubtitle="Reflector Dwell Times (sec) • Fitting Room Privacy Stance"
+            emptyStateText="Click **Evaluate Store Traffic** to optimize inventory placement based on floor heatmaps and checkout queue lengths."
+            stats={[
+              { label: "Active Shoppers", value: "14 Occupants", color: "text-amber-400" },
+              { label: "Queue Dwell Time", value: "4.2 min (Average)" },
+              { label: "VIP Returner", value: "Gait Matched (01)" }
+            ]}
+            visualFlair={
+              <div className="h-16 w-full bg-amber-950/20 border border-amber-500/20 rounded-lg flex items-center justify-between p-3 font-mono text-[9px] text-amber-400">
+                <div>🛍️ SHOPPING BAY 3: HIGH TRAFFIC DENSITY</div>
+                <div>🚻 RESTROOM OCCUPANCY: usage limit met (Needs sweep)</div>
+              </div>
+            }
+            prompt="You are the AetherSense Retail Commercial AI. Optimize store aisle layouts, detect checkout queues, and map fitting room privacy occupancy thresholds."
+          />
+        )}
+
+        {/* Speculative: Industrial */}
+        {activeMode === "spec_industrial" && (
+          <AgentWorkspace 
+            icon={Cpu}
+            title="Industrial Automation & Warehouse Safety"
+            themeColor="teal"
+            buttonText="Monitor Warehouse Safety"
+            reportTitle="Forklift Collision Avoidance & Mesh Safety Zones"
+            reportSubtitle="Autonomic Worker Fatigue Indices • Loading Dock Webhooks"
+            emptyStateText="Click **Monitor Warehouse Safety** to verify dangerous zone perimeters or trace heavy machinery collision bounds."
+            stats={[
+              { label: "Forklift Status", value: "Nominal Path", color: "text-teal-400" },
+              { label: "Active Workers", value: "3 Mapped Upright" },
+              { label: "Mesh Zone Breach", value: "Clear" }
+            ]}
+            visualFlair={
+              <div className="h-16 w-full bg-teal-950/20 border border-teal-500/20 rounded-lg flex items-center justify-between p-3 font-mono text-[9px] text-teal-400">
+                <div>🏗️ CRANE DECK METRICS: STATIC LOADS SECURE</div>
+                <div>🔌 PIPELINE INTEGRITY: NO Gaseous Attenuation</div>
+              </div>
+            }
+            prompt="You are the AetherSense Industrial Automation AI. Monitor forklift trajectories, repetition worker exhaustion rates, and mesh dangerous boundaries."
+          />
+        )}
+
+        {/* Speculative: Paranormal */}
+        {activeMode === "spec_paranormal" && (
+          <AgentWorkspace 
+            icon={Bot}
+            title="AetherSense Paranormal & Phase Investigator"
+            themeColor="purple"
+            buttonText="Initiate Ghost Scan"
+            reportTitle="Ambient Wave Distortions & Micro-Climatic Thermal Voids"
+            reportSubtitle="WiFi CSI Attenuation Index (dB) • Phase Coherence Drops"
+            emptyStateText="Click **Initiate Ghost Scan** to record environmental deviations, phase shifts ($\% \Delta CSI$), and localized signal refractions."
+            stats={[
+              { label: "Phase Distortion", value: "78.4% (Severe)", color: "text-purple-400" },
+              { label: "Biological Pulse", value: "None Detected (Null)" },
+              { label: "EMF Drop", value: "-14.2 dB Attenuation" }
+            ]}
+            visualFlair={
+              <div className="h-16 w-full bg-purple-950/20 border border-purple-500/20 rounded-lg flex items-center justify-between p-3 font-mono text-[9px] text-purple-400">
+                <div>👻 WAVE FABRIC ANOMALY: LOCALIZED ATTENUATION HIGH</div>
+                <div>⚖️ REFRACTIVE METRIC: GHOST ECHO HARMONIC DETECTED</div>
+              </div>
+            }
+            prompt="You are the AetherSense Speculative & Paranormal Activity Investigator. Analyze signal distortions and wave phase shifts occurring in closed rooms where zero biological vital signs or heat signatures exist."
+          />
+        )}
+
+        {/* Speculative: Disaster */}
+        {activeMode === "spec_disaster" && (
+          <AgentWorkspace 
+            icon={Crosshair}
+            title="Disaster Recovery & First Responders"
+            themeColor="orange"
+            buttonText="Conduct Rubble Sweep"
+            reportTitle="Sub-Millimeter Rubble Respiration Tracker"
+            reportSubtitle="Active Rescue Grid Overlay • Avalanche Depth Indices"
+            emptyStateText="Click **Conduct Rubble Sweep** to identify survivors buried beneath collapsed concrete or snow using WiFi multipath reflections."
+            stats={[
+              { label: "Survivor Count", value: "0 Detected", color: "text-orange-400" },
+              { label: "Air Voids mapped", value: "2 Open (Dry)" },
+              { label: "Wall Shift", value: "Stable (<0.1mm)" }
+            ]}
+            visualFlair={
+              <div className="h-16 w-full bg-orange-950/20 border border-orange-500/20 rounded-lg flex items-center justify-between p-3 font-mono text-[9px] text-orange-400">
+                <div>🚒 FIRST RESPONDER NETWORK: COLLAPSE WARNING ALERT CLEAR</div>
+                <div>📡 DRONE PULSE SEARCH: CANOPY INTERFERENCE MAP MODIFIED</div>
+              </div>
+            }
+            prompt="You are the AetherSense Disaster Recovery AI. Sweep rubble to detect survivor breathing, firefighter heads-up mapping directories, and avalanche depth indices."
+          />
+        )}
+
+        {/* Speculative: Edge */}
+        {activeMode === "spec_edge" && (
+          <AgentWorkspace 
+            icon={Network}
+            title="AetherSense Edge Computing & Autonomous Agents"
+            themeColor="cyan"
+            buttonText="Optimize Edge Routing"
+            reportTitle="Mesh Self-Healing Vectoring & Zero-Latency edge alerts"
+            reportSubtitle="Local Processing Speeds (us) • Companion AI Gaze Vectors"
+            emptyStateText="Click **Optimize Edge Routing** to evaluate edge packet routes or synchronize dynamic screen gaze controls."
+            stats={[
+              { label: "Self-Healing status", value: "100% Coherent", color: "text-cyan-400" },
+              { label: "Local Latency", value: "1.2 ms (Edge)" },
+              { label: "Companion AI Gaze", value: "Active Target-A" }
+            ]}
+            visualFlair={
+              <div className="h-16 w-full bg-cyan-950/20 border border-cyan-500/20 rounded-lg flex items-center justify-between p-3 font-mono text-[9px] text-cyan-400">
+                <div>💻 ZERO-LATENCY ALERTS: GATEWAY ROUTING MODIFIED</div>
+                <div>⚡ DYNAMIC Webhook TRIGGERS: EVENT CAPTURE ONLINE</div>
+              </div>
+            }
+            prompt="You are the AetherSense Edge Computing & Autonomous AI Agent. Analyze mesh self-healing rerouting coefficients, edge alerts, companion virtual tracking vectors, and gaze UI display triggers."
           />
         )}
           </div>

@@ -777,52 +777,6 @@ function MqttIntegratorPanel({ sensing }) {
   );
 }
 
-function DuplicateSecurityView({ sensing, soundEnabled, setSoundEnabled }) {
-  const security = sensing.analysis?.security || {};
-  const entities = sensing.analysis?.entities || [];
-
-  return (
-    <div className="glass tilt-card layer-top p-5 rounded-2xl flex-1 flex flex-col gap-5 bg-white/[0.01]">
-      <div className="flex justify-between items-center border-b border-white/10 pb-3">
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="text-[var(--accent)] animate-pulse" />
-          <h2 className="text-sm font-bold tracking-tight text-white font-mono uppercase">Intrusion Stance Workspace</h2>
-        </div>
-        <span className="text-[9px] font-mono text-[var(--text-muted)]">ACTIVE SHIELD DEFENSE</span>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_250px] gap-5 flex-1 min-h-0">
-        <div className="flex flex-col gap-3 min-h-0">
-          <div className="border border-white/5 bg-black/40 p-4 rounded-xl flex-1 flex flex-col gap-3">
-            <h3 className="text-xs font-bold text-white font-mono uppercase">Dynamic Signal Scattering Vector</h3>
-            <div className="flex-1 min-h-[150px] border border-dashed border-white/15 rounded-lg flex items-center justify-center relative overflow-hidden bg-black/60">
-              <div className="scan-line-anim" />
-              <div className="radar-scanner" />
-              <div className="radar-wave" />
-              <span className="text-[10px] font-mono text-[var(--accent)] bg-black/60 px-3 py-1.5 rounded-full border border-white/10 z-10 animate-pulse">
-                PERIMETER SCANNING RANGE: 15m RADIAL SPHERE
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <div className="border border-white/5 bg-black/40 p-4 rounded-xl flex flex-col gap-3">
-            <h3 className="text-xs font-bold text-white font-mono uppercase">Perimeter Stance</h3>
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between items-center bg-black/40 border border-white/5 p-2.5 rounded">
-                <span className="text-[10px] font-mono text-gray-400">Threat Index</span>
-                <span className={`text-[10px] font-mono font-bold ${security.triggered ? "text-red-400 animate-pulse" : "text-green-400"}`}>
-                  {security.triggered ? "CRITICAL ALERT" : "ZERO ANOMALIES"}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function StatCard({ label, value, sub, color }) {
   return (

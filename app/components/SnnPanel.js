@@ -29,7 +29,7 @@ export default function SnnPanel({ analysis, snnConfig }) {
   };
 
   return (
-    <div 
+    <div
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -43,6 +43,31 @@ export default function SnnPanel({ analysis, snnConfig }) {
     >
       <h3 className="text-lg font-semibold mb-1">Spiking Neural Network Engine</h3>
       <p className="text-xs text-[var(--text-muted)] mb-5">Real-time SNN inference on CSI subcarrier amplitude deltas with STDP online learning</p>
+
+      {/* Physical Metrics & Coherence */}
+      <div className="glass p-4 rounded-xl mb-4">
+        <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-3">Physical Signal Coherence</p>
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-2 bg-white/[0.03] rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{
+                width: `${Math.round((analysis?.coherence?.score || 0) * 100)}%`,
+                background: `linear-gradient(90deg, rgba(14,165,233,0.95), rgba(59,130,246,0.95))`,
+                boxShadow: `0 0 18px rgba(14,165,233,0.25)`,
+              }}
+            />
+          </div>
+          <span className="text-xs font-mono text-[var(--accent)] w-16 text-right">{(analysis?.coherence?.score || 0).toFixed(3)}</span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+          <MiniMetric label="Attenuation" value={analysis?.physicalMetrics?.waveAttenuation?.dropPct ?? 0} suffix="%" />
+          <MiniMetric label="Phase Var" value={analysis?.physicalMetrics?.phaseVariance ?? 0} precision={4} />
+          <MiniMetric label="Doppler" value={analysis?.physicalMetrics?.dopplerShifts?.velocityProxy ?? 0} precision={4} />
+          <MiniMetric label="Delay" value={analysis?.physicalMetrics?.subcarrierDelays?.delaySpread ?? 0} precision={4} />
+        </div>
+      </div>
 
       {/* Network Info */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
@@ -89,6 +114,20 @@ export default function SnnPanel({ analysis, snnConfig }) {
   );
 }
 
+function MiniMetric({ label, value, suffix = "", precision = 2 }) {
+  const show = typeof value === 'number' ? value : Number(value || 0);
+  const formatted = typeof value === 'number'
+    ? (suffix ? show.toFixed(precision) + suffix : show.toFixed(precision))
+    : show.toFixed(precision) + suffix;
+
+  return (
+    <div className="glass p-2 rounded-lg text-center bg-black/[0.15] border border-white/5">
+      <p className="text-[9px] text-[var(--text-muted)]">{label}</p>
+      <p className="text-[11px] font-mono font-bold text-[var(--text-primary)] mt-0.5">{formatted}</p>
+    </div>
+  );
+}
+
 function InfoBox({ label, value }) {
   return (
     <div className="glass p-3 rounded-lg text-center">
@@ -97,3 +136,4 @@ function InfoBox({ label, value }) {
     </div>
   );
 }
+

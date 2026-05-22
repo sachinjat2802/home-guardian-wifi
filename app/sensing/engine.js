@@ -31,7 +31,7 @@ const getLinuxSignal = (iface) => {
         }
       }
     }
-  } catch (e) {}
+  } catch (e) { }
   return 80;
 };
 
@@ -138,9 +138,9 @@ export function startSensingServer() {
 
   const setHardwareMissing = (reason) => {
     console.warn(`⚠️ [Sensing Engine] Real hardware query failed: ${reason || "capture failed"}. Falling back to simulation mode.`);
-    
+
     state.systemMode = "simulation";
-    
+
     broadcast({
       type: "hardware_status",
       ok: true,
@@ -880,7 +880,7 @@ export function startSensingServer() {
               const channel = parseInt(chanStdout.replace(/[^0-9]/g, '')) || 6;
               const iface = getLinuxWifiInterface();
               const signal = getLinuxSignal(iface);
-              
+
               state.systemMode = 'real';
               state.connectedNetwork = {
                 ssid,
@@ -1015,11 +1015,11 @@ export function startSensingServer() {
           if (!line.trim()) continue;
           const parts = line.split(':');
           if (parts.length < 5) continue;
-          
+
           const security = parts.pop() || 'Unknown';
           const channel = parseInt(parts.pop()) || 6;
           const signal = parseInt(parts.pop()) || 50;
-          
+
           const lineWithoutPrefix = parts.join(':');
           const bssidMatch = lineWithoutPrefix.match(/([0-9a-fA-F\\:]{11,20})/);
           const bssid = bssidMatch ? bssidMatch[1].replace(/\\/g, '') : '00:11:22:33:44:55';
@@ -1119,6 +1119,83 @@ export function startSensingServer() {
       snnOutput[OUTPUT_LABELS[i]] = parseFloat(state.snnOutputSmoothed[i].toFixed(4));
     }
 
+    const phaseVar = (() => {
+      const phases = spectrumData.map(s => s.phase || 0);
+      const mean = phases.reduce((a, b) => a + b, 0) / Math.max(1, phases.length);
+      const v = phases.reduce((a, p) => a + (p - mean) ** 2, 0) / Math.max(1, phases.length);
+      return v;
+    })();
+
+    const attenuation = (() => {
+      const base = Math.max(1, state.baselineSignal || 0);
+      const drop = Math.max(0, base - (state.lastSignal ?? state.signalHistory[state.signalHistory.length - 1]?.signal ?? base));
+      const pct = (drop / base) * 100;
+      return {
+        dropPct: parseFloat(Math.max(0, Math.min(100, pct)).toFixed(2)),
+        baseline: state.baselineSignal,
+        current: state.lastSignal,
+      };
+    })();
+
+    const doppler = (() => {
+      // Estimate relative frequency/velocity proxy from phase progression magnitude.
+      // (In real CSI this would come from unwrapped phase slope across time.)
+      const history = state.signalHistory.slice(-10);
+      if (history.length < 2) return { velocityProxy: 0, energy: 0 };
+      let phaseDeltaEnergy = 0;
+      for (let i = 1; i < history.length; i++) {
+        const ds = Math.abs((history[i].signal - history[i - 1].signal) || 0);
+        phaseDeltaEnergy += ds;
+      }
+      const energy = phaseDeltaEnergy / Math.max(1, history.length - 1);
+      return {
+        velocityProxy: parseFloat((energy / 10).toFixed(4)),
+        energy: parseFloat((energy / 100).toFixed(4)),
+      };
+    })();
+
+    const subcarrierDelays = (() => {
+      // Approximate delay spread from amplitude/phase bin-to-bin differential phase.
+      const phases = spectrumData.map(s => s.phase || 0);
+      if (phases.length < 3) return { delaySpread: 0, coherenceDelay: 0 };
+      let sumDiff = 0;
+      for (let i = 1; i < phases.length; i++) sumDiff += Math.abs(phases[i] - phases[i - 1]);
+      const delaySpread = sumDiff / (phases.length - 1);
+      // Map to coherence (higher spread -> lower coherence)
+      const coherenceDelay = 1 / (1 + delaySpread);
+      return {
+        delaySpread: parseFloat(delaySpread.toFixed(4)),
+        coherenceDelay: parseFloat(Math.max(0, Math.min(1, coherenceDelay)).toFixed(4)),
+      };
+    })();
+
+    const signalCoherence = (() => {
+      const amp = state.subcarrierAmplitudes;
+      if (!amp || amp.length < 2) return 0;
+      const recent = state.signalHistory.slice(-10).map(x => x.signal);
+      const recentVar = recent.length >= 2
+        ? recent.reduce((a, b) => a + (b - (recent.reduce((s, v) => s + v, 0) / recent.length)) ** 2, 0) / recent.length
+        : 0;
+
+      // Lower variance -> higher coherence
+      const coherenceFromVariance = 1 / (1 + recentVar / 20);
+
+      // Phase variance and delay coherence reduce it.
+      const phasePenalty = 1 / (1 + phaseVar);
+      const delayPenalty = subcarrierDelays.coherenceDelay;
+
+      // attenuation penalty: big drops reduce coherence
+      const attenuationPenalty = 1 / (1 + (attenuation.dropPct / 40));
+
+      return {
+        score: parseFloat(Math.max(0, Math.min(1, (coherenceFromVariance * 0.45 + phasePenalty * 0.25 + delayPenalty * 0.2 + attenuationPenalty * 0.1))).toFixed(4)),
+        coherenceFromVariance: parseFloat(coherenceFromVariance.toFixed(4)),
+        phasePenalty: parseFloat(phasePenalty.toFixed(4)),
+        delayPenalty: parseFloat(delayPenalty.toFixed(4)),
+        attenuationPenalty: parseFloat(attenuationPenalty.toFixed(4)),
+      };
+    })();
+
     broadcast({
       type: 'analysis',
       timestamp: Date.now(),
@@ -1131,6 +1208,13 @@ export function startSensingServer() {
         spikes: Math.round(state.snnOutputSmoothed.reduce((a, b) => a + b, 0) * 100),
         network: `${SNN_INPUT}-${SNN_HIDDEN}-${SNN_OUTPUT}`,
       },
+      physicalMetrics: {
+        waveAttenuation: attenuation,
+        phaseVariance: parseFloat(phaseVar.toFixed(6)),
+        dopplerShifts: doppler,
+        subcarrierDelays,
+      },
+      coherence: signalCoherence,
       personCount: state.vitals.nPersons,
       entities: state.entities,
       spectrum: spectrumData,
@@ -1217,7 +1301,7 @@ export function startSensingServer() {
           } else if (cmd.type === 'mode') {
             state.systemMode = cmd.mode;
             console.log("🔄 [Sensing Engine] Mode toggled dynamically to:", state.systemMode);
-            
+
             // Broadcast mode change to all connected clients immediately
             broadcast({
               type: "hardware_status",

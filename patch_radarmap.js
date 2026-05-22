@@ -1,9 +1,0 @@
-const fs = require('fs');
-let code = fs.readFileSync('app/components/RadarMap.js', 'utf8');
-
-code = code.replace(
-  /const \[trails, setTrails\] = useState\(\{\}\);\n\n  useEffect\(\(\) => \{\n    if \(\!entities \|\| entities\.length === 0\) return;\n    setTrails\(prev => \{\n      const newTrails = \{ \.\.\.prev \};\n      entities\.forEach\(e => \{\n        if \(\!newTrails\[e\.id\]\) newTrails\[e\.id\] = \[\];\n        const lastPos = newTrails\[e\.id\]\[newTrails\[e\.id\]\.length - 1\];\n        if \(\!lastPos \|\| Math\.abs\(lastPos\.x - e\.x\) > 0\.5 \|\| Math\.abs\(lastPos\.y - e\.y\) > 0\.5\) \{\n          newTrails\[e\.id\]\.push\(\{ x: e\.x, y: e\.y, time: Date\.now\(\) \}\);\n          if \(newTrails\[e\.id\]\.length > 20\) newTrails\[e\.id\]\.shift\(\);\n        \}\n      \}\);\n      Object\.keys\(newTrails\)\.forEach\(id => \{\n        if \(\!entities\.find\(e => e\.id === id\)\) delete newTrails\[id\];\n      \}\);\n      return newTrails;\n    \}\);\n  \}, \[entities\]\);/g,
-  `const [trails, setTrails] = useState({});\n  const [prevEntities, setPrevEntities] = useState([]);\n\n  if (entities !== prevEntities) {\n    setPrevEntities(entities);\n    if (entities && entities.length > 0) {\n      const newTrails = { ...trails };\n      entities.forEach(e => {\n        if (!newTrails[e.id]) newTrails[e.id] = [];\n        const lastPos = newTrails[e.id][newTrails[e.id].length - 1];\n        if (!lastPos || Math.abs(lastPos.x - e.x) > 0.5 || Math.abs(lastPos.y - e.y) > 0.5) {\n          newTrails[e.id].push({ x: e.x, y: e.y, time: Date.now() });\n          if (newTrails[e.id].length > 20) newTrails[e.id].shift();\n        }\n      });\n      Object.keys(newTrails).forEach(id => {\n        if (!entities.find(e => e.id === id)) delete newTrails[id];\n      });\n      setTrails(newTrails);\n    }\n  }`
-);
-
-fs.writeFileSync('app/components/RadarMap.js', code);
