@@ -1,0 +1,37 @@
+{
+  "skill": "network_doppler_calibration",
+  "displayName": "Network Doppler Calibration Skill",
+  "description": "Empowers agents to audit and optimize host wireless adapter variables for high-fidelity physical micro-Doppler and vital sign sensing.",
+  "inputs": {
+    "interface": {
+      "type": "string",
+      "description": "Wireless network adapter name (e.g. wlo1, wlan0). If empty, auto-detects.",
+      "required": false
+    },
+    "duration_seconds": {
+      "type": "integer",
+      "description": "Duration for dynamic baseline subtraction calibration.",
+      "default": 10
+    }
+  },
+  "execution_pipeline": [
+    {
+      "step": 1,
+      "name": "Audit Interface",
+      "description": "Scan system interfaces using `iw dev` to find the active wireless adapter and identify if Power Save mode is injecting latency spikes.",
+      "action": "iw dev"
+    },
+    {
+      "step": 2,
+      "name": "Optimize Adapter Settings",
+      "description": "Turn off adapter power saving to lock the network card at max modulation rates, preventing MCS rate fallback downshifts.",
+      "action": "sudo iw dev {{interface}} set power_save off"
+    },
+    {
+      "step": 3,
+      "name": "Establish Calibrated Room Baseline",
+      "description": "Commence dynamic baseline extraction inside engine.py, mapping reflections to static ambient clutter values to isolate moving targets.",
+      "action": "curl -X POST http://localhost:8080/api/sensing/calibrate?duration={{duration_seconds}}"
+    }
+  ]
+}

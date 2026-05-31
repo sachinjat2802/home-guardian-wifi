@@ -62,7 +62,6 @@ export function useWifiSensing() {
     securityArmed: false,
     alarmTriggered: false,
     alarmReason: "",
-    simulationPreset: "everything",
     // Local polling loops removed.
   }, []);
 
@@ -157,34 +156,15 @@ export function useWifiSensing() {
       fall: false
     };
 
-    let numPersons = 0, numCows = 0, numBuffaloes = 0, numPets = 0, numGhosts = 0, numAppliances = 0;
-
-    if (engine.simulationPreset === 'residential') {
-      numPersons = 7;
-      numPets = 2;
-      numAppliances = 1;
-    } else if (engine.simulationPreset === 'livestock') {
-      numCows = 3;
-      numBuffaloes = 2;
-      numPets = 1;
-      numPersons = 2;
-    } else if (engine.simulationPreset === 'security') {
-      numPersons = 3;
-      numGhosts = 2;
-    } else if (engine.simulationPreset === 'everything') {
-      numPersons = 7;
-      numCows = 3;
-      numBuffaloes = 2;
-      numPets = 2;
-      numGhosts = 2;
-      numAppliances = 1;
-    }
+    // Use occupant profile count from server, default to family
+    let numPersons = 5; // Default family size when disconnected
+    let numCows = 0, numBuffaloes = 0, numPets = 0, numGhosts = 0, numAppliances = 0;
 
     const entitiesList = [];
 
     // 1. Generate Persons
     for (let i = 1; i <= numPersons; i++) {
-      const isIntruder = (engine.simulationPreset === 'security' && i === numPersons) || (engine.simulationPreset === 'everything' && i === 7);
+      const isIntruder = false;
 
       // Dynamic simulated state transitions over time (active, resting, sleeping)
       let status = 'resting';
@@ -386,17 +366,6 @@ export function useWifiSensing() {
       if (vitals.fall) {
         engine.alarmTriggered = true;
         engine.alarmReason = "FALL DETECTED: Primary subject fall event recorded";
-      } else if (engine.simulationPreset === 'security' && entitiesList.length > 0) {
-        engine.alarmTriggered = true;
-        const personIntruder = entitiesList.find(e => e.type === 'person');
-        const anomalyIntruder = entitiesList.find(e => e.type === 'anomalous');
-        if (personIntruder) {
-          engine.alarmReason = "INTRUSION DETECTED: Hostile intruder moving in secure sector";
-        } else if (anomalyIntruder) {
-          engine.alarmReason = "INTRUSION DETECTED: Anomalous interference signature detected in secure sector";
-        } else {
-          engine.alarmReason = "INTRUSION DETECTED: Unknown motion detected in secure sector";
-        }
       } else if (vitals.motionEnergy > 0.6) {
         engine.alarmTriggered = true;
         engine.alarmReason = "MOTION ALERT: Extreme spatial disruption under arm surveillance";
@@ -571,7 +540,7 @@ export function useWifiSensing() {
       motion: motionDetected,
       severity: motionSeverity,
       timestamp: Date.now(),
-      mode: 'local-simulation',
+      mode: 'disconnected',
       network: connectedNetwork,
       rssi: Math.round(-100 + (signal / 100) * 60),
     });
@@ -671,7 +640,7 @@ export function useWifiSensing() {
       type: 'analysis',
       timestamp: Date.now(),
       frame: engine.frameCount,
-      mode: 'local-simulation',
+      mode: 'disconnected',
       classification: engine.csiClassification,
       vitals: { ...engine.vitals },
       snn: {
@@ -688,7 +657,6 @@ export function useWifiSensing() {
         armed: engine.securityArmed,
         triggered: engine.alarmTriggered,
         reason: engine.alarmReason,
-        preset: engine.simulationPreset,
       },
       mqtt: { ...engine.mqtt }
     });
@@ -708,38 +676,11 @@ export function useWifiSensing() {
     clearInterval(localLoopRef.current);
     clearInterval(localAnalysisLoopRef.current);
 
-    setConnected(true);
-    setMode("local-simulation");
-    setSnnConfig({ input: SNN_INPUT, hidden: SNN_HIDDEN, output: SNN_OUTPUT, labels: OUTPUT_LABELS });
-
-    // Seed high-fidelity mock data for offline/local simulation dashboard experience
-    const initialOccupants = [
-      { id: "person-1", name: "Sachin (Self)", relationship: "Family", contactInfo: "+91 98765 43210", gender: "Male", healthStatus: "Normal Vitals", age: 28, targetBpm: 72, notes: "Primary resident. Monitored for baseline sleep-cycle calibration." },
-      { id: "person-2", name: "Priya (Spouse)", relationship: "Family", contactInfo: "+91 98765 43211", gender: "Female", healthStatus: "Pregnancy Vitals Monitoring", age: 26, targetBpm: 78, notes: "Requiring constant heart rate and respiration phase checks." },
-      { id: "person-3", name: "Rohan (Son)", relationship: "Family", contactInfo: "+91 98765 43212", gender: "Male", healthStatus: "Normal Vitals", age: 5, targetBpm: 90, notes: "Highly dynamic Doppler blip, active play periods." },
-      { id: "person-4", name: "Amit (Friend)", relationship: "Friend", contactInfo: "+91 98765 43213", gender: "Male", healthStatus: "Normal Vitals", age: 29, targetBpm: 75, notes: "Regular weekend visitor." },
-      { id: "person-5", name: "Dr. Sharma", relationship: "Relative", contactInfo: "+91 98765 43214", gender: "Male", healthStatus: "Normal Vitals", age: 55, targetBpm: 68, notes: "Emergency medical contact. Whitelisted access." }
-    ];
-    setOccupants(initialOccupants);
-
-    setHealthAlerts([
-      { id: 1, occupant_name: "Priya (Spouse)", msg: "Pregnancy Vitals Check: Heart rate elevated to 94 BPM during mild movement.", time: "10:15 AM", type: "alert" },
-      { id: 2, occupant_name: "Sachin (Self)", msg: "Positional Supine Apnea Trend: Moderate respiratory dip classified at 03:40 AM.", time: "03:40 AM", type: "info" }
-    ]);
-
-    setHealthSummaries([
-      { id: 1, occupant_name: "Sachin (Self)", summary: "Consistent 8.2h sleep profile with mild supine obstruction. Sympathetic recovery is normal." },
-      { id: 2, occupant_name: "Priya (Spouse)", summary: "Vitals stable. Mild gestational sinus tachycardia noted during active phases, baseline is perfect." }
-    ]);
-
-    initLocalSNN();
-    generateLocalNetworks();
-
-    addEvent("Server offline. Activated Local RuView Client-Side Sensing Pipeline", "system");
-
-    localLoopRef.current = setInterval(runLocalSensingIteration, 500);
-    localAnalysisLoopRef.current = setInterval(runLocalAnalysisIteration, 2000);
-  }, [initLocalSNN, generateLocalNetworks, runLocalSensingIteration, runLocalAnalysisIteration, addEvent]);
+    setConnected(false);
+    setMode("disconnected");
+    setTelemetry(null);
+    setAnalysis(null);
+  }, []);
 
   // ─── WebSocket Client (Hardware Sensing) ──────────────────────────
   const connect = useCallback(function doConnect() {
@@ -769,8 +710,10 @@ export function useWifiSensing() {
           switch (data.type) {
             case "hardware_status":
               if (!data.ok) {
-                setConnected(false);
+                setConnected(true);
                 setMode(data.mode || "hardware-missing");
+                setTelemetry(null);
+                setAnalysis(null);
                 addEvent(`Hardware missing: ${data.reason || "Real capture failed"}`, "alert");
               } else {
                 setMode(data.mode);
@@ -841,6 +784,9 @@ export function useWifiSensing() {
               break;
             case "networks":
               setNetworks(data.networks || []);
+              if (data.network) {
+                setConnectedNetwork(data.network);
+              }
               break;
           }
         } catch (e) {
@@ -850,6 +796,8 @@ export function useWifiSensing() {
 
       ws.onclose = () => {
         setConnected(false);
+        setTelemetry(null);
+        setAnalysis(null);
 
         // If server told us real capture is missing, do NOT start local simulation fallback.
         if (mode === "hardware-missing") {
@@ -869,6 +817,8 @@ export function useWifiSensing() {
       };
     } catch (e) {
       setMode("disconnected");
+      setTelemetry(null);
+      setAnalysis(null);
       startLocalFallbackEngine();
       reconnectRef.current = setTimeout(doConnect, 4000);
     }
@@ -899,7 +849,7 @@ export function useWifiSensing() {
   const requestScan = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "scan" }));
-    } else if (mode === "local-simulation") {
+    } else if (mode === "disconnected") {
       generateLocalNetworks();
       addEvent("Local network scan completed", "system");
     }
@@ -911,7 +861,7 @@ export function useWifiSensing() {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "arm" }));
     }
-    if (mode === "local-simulation" || wsRef.current?.readyState !== WebSocket.OPEN) {
+    if (mode === "disconnected" || wsRef.current?.readyState !== WebSocket.OPEN) {
       runLocalAnalysisIteration(); // Trigger instant view refresh
     }
   }, [mode, addEvent, runLocalAnalysisIteration]);
@@ -924,7 +874,7 @@ export function useWifiSensing() {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "disarm" }));
     }
-    if (mode === "local-simulation" || wsRef.current?.readyState !== WebSocket.OPEN) {
+    if (mode === "disconnected" || wsRef.current?.readyState !== WebSocket.OPEN) {
       runLocalAnalysisIteration(); // Trigger instant view refresh
     }
   }, [mode, addEvent, runLocalAnalysisIteration]);
@@ -937,14 +887,13 @@ export function useWifiSensing() {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "trigger_alarm", reason: msgReason }));
     }
-    if (mode === "local-simulation" || wsRef.current?.readyState !== WebSocket.OPEN) {
+    if (mode === "disconnected" || wsRef.current?.readyState !== WebSocket.OPEN) {
       runLocalAnalysisIteration(); // Trigger instant view refresh
     }
   }, [mode, addEvent, runLocalAnalysisIteration]);
 
   const changePreset = useCallback((preset) => {
-    addEvent(`📡 Preset changed to: ${preset.toUpperCase()}`, "system");
-    localEngineRef.current.simulationPreset = preset;
+    addEvent(`📡 Preset change requested: ${preset.toUpperCase()} — system uses real profiles`, "system");
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "preset", preset }));
     }
@@ -953,7 +902,7 @@ export function useWifiSensing() {
     const engine = localEngineRef.current;
     extractLocalVitals(engine.lastSignal || 82, false, 'none');
 
-    if (mode === "local-simulation" || wsRef.current?.readyState !== WebSocket.OPEN) {
+    if (mode === "disconnected" || wsRef.current?.readyState !== WebSocket.OPEN) {
       runLocalAnalysisIteration(); // Trigger instant view refresh
     }
   }, [mode, addEvent, extractLocalVitals, runLocalAnalysisIteration]);
@@ -968,7 +917,7 @@ export function useWifiSensing() {
   const toggleMqtt = useCallback((connected) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "mqtt_toggle", connected }));
-    } else if (mode === "local-simulation") {
+    } else if (mode === "disconnected") {
       localEngineRef.current.mqtt = localEngineRef.current.mqtt || { connected: false, host: "mqtt://192.168.1.150:1883", topic: "home/guardian", rateLimitMs: 1000, publishOccupancy: true, publishVitals: true, publishAlerts: true, logs: [] };
       localEngineRef.current.mqtt.connected = connected;
       addEvent(`Local MQTT gateway state: ${connected ? "CONNECTED" : "DISCONNECTED"}`, "system");
@@ -979,7 +928,7 @@ export function useWifiSensing() {
   const configureMqtt = useCallback((config) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "mqtt_config", config }));
-    } else if (mode === "local-simulation") {
+    } else if (mode === "disconnected") {
       localEngineRef.current.mqtt = localEngineRef.current.mqtt || { connected: false, host: "mqtt://192.168.1.150:1883", topic: "home/guardian", rateLimitMs: 1000, publishOccupancy: true, publishVitals: true, publishAlerts: true, logs: [] };
       localEngineRef.current.mqtt = { ...localEngineRef.current.mqtt, ...config };
       addEvent(`Local MQTT configurations updated`, "system");
@@ -990,7 +939,7 @@ export function useWifiSensing() {
   const testMqtt = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "mqtt_test" }));
-    } else if (mode === "local-simulation") {
+    } else if (mode === "disconnected") {
       localEngineRef.current.mqtt = localEngineRef.current.mqtt || { connected: false, host: "mqtt://192.168.1.150:1883", topic: "home/guardian", rateLimitMs: 1000, publishOccupancy: true, publishVitals: true, publishAlerts: true, logs: [] };
       const timeStr = new Date().toLocaleTimeString();
       localEngineRef.current.mqtt.logs = localEngineRef.current.mqtt.logs || [];

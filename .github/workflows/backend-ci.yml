@@ -1,0 +1,61 @@
+name: Python Spatial & DSP Backend CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  validate-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        cache: 'pip'
+
+    - name: Install System Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wireless-tools iw
+
+    - name: Install Scientific & Server Packages
+      run: |
+        python -m pip install --upgrade pip
+        # Install CPU-only PyTorch to keep CI runner fast and light
+        pip install torch --index-url https://download.pytorch.org/whl/cpu
+        pip install fastapi uvicorn numpy aiosqlite websockets sqlalchemy flake8
+
+    - name: Syntax Compilation Check
+      run: |
+        echo "📡 Compiling all python source files to check for syntax regressions..."
+        python -m compileall gait_recognition_backend/
+
+    - name: Lint Code with Flake8
+      run: |
+        echo "🔍 Auditing code style and critical errors..."
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 gait_recognition_backend/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings.
+        flake8 gait_recognition_backend/ --count --exit-zero --max-complexity=15 --max-line-length=127 --statistics
+
+    - name: Verify SQLite Schema Initialization
+      run: |
+        echo "💾 Initializing database schemas in test environment..."
+        python -c "
+        import asyncio
+        import aiosqlite
+        from gait_recognition_backend.analytics import init_analytics_tables
+        async def test_init():
+            conn = await aiosqlite.connect('test_wifi_guardian.db')
+            await init_analytics_tables(conn)
+            await conn.close()
+            print('✅ Database Schema successfully initialized!')
+        asyncio.run(test_init())
+        "

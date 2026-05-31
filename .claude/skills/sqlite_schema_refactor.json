@@ -1,0 +1,25 @@
+{
+  "skill": "sqlite_schema_refactor",
+  "displayName": "SQLite Safe Migration & Refactoring Skill",
+  "description": "Guides agents to perform zero-downtime schema refactoring, index creation, and data migrations on the live Home Guardian database.",
+  "execution_pipeline": [
+    {
+      "step": 1,
+      "name": "Acquire Integrity Baseline",
+      "description": "Scan SQLite structure using PRAGMA integrity_check to verify the database file is clean and free of corruption blocks.",
+      "action": "sqlite3 wifi_guardian.db \"PRAGMA integrity_check;\""
+    },
+    {
+      "step": 2,
+      "name": "Audit Table Definitions",
+      "description": "Fetch raw table SQL DDL representations to check for the existence of required fields before altering tables.",
+      "action": "sqlite3 wifi_guardian.db \"SELECT sql FROM sqlite_master WHERE type='table';\""
+    },
+    {
+      "step": 3,
+      "name": "Execute Incremental Migrations",
+      "description": "Safely run ALTER TABLE statements in transactional blocks, ensuring indexes are built asynchronously to avoid table locking issues during active telemetry polling.",
+      "action": "sqlite3 wifi_guardian.db \"BEGIN TRANSACTION; ALTER TABLE ...; COMMIT;\""
+    }
+  ]
+}

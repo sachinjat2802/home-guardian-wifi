@@ -1318,6 +1318,43 @@ export function startSensingServer() {
           } else if (cmd.type === 'mqtt_config') {
             state.mqtt = { ...state.mqtt, ...cmd.config };
             console.log("📡 [Sensing Engine] MQTT Configuration Updated");
+          } else if (cmd.type === 'gait_presence_update') {
+            console.log(`📡 [Sensing Engine] Gait Recognition trigger received: User ${cmd.name} (${cmd.user_id}) -> ${cmd.status}`);
+            
+            // Find occupant in state.entities and update or append
+            const personIndex = state.entities.findIndex(e => e.id === cmd.user_id || e.name.toLowerCase().includes(cmd.name.toLowerCase()));
+            if (personIndex !== -1) {
+              state.entities[personIndex].status = cmd.status === 'present' ? 'active' : 'absent';
+              state.entities[personIndex].confidence = cmd.confidence;
+            } else if (cmd.status === 'present') {
+              state.entities.push({
+                id: cmd.user_id,
+                name: cmd.name,
+                type: 'person',
+                relationship: 'Family',
+                confidence: cmd.confidence,
+                vitals: { heartRate: 72, breathingRate: 14, hrv: 55, temp: 36.6, spo2: 98, sleepStage: null },
+                biometrics: { age: 28, gaitSpeed: 1.1, bodyDensity: 1.05, classification: 'Biometric Gait Enrolled' },
+                status: 'active',
+                x: 50,
+                y: 50
+              });
+            }
+            
+            // Broadcast the new presence status to all UI dashboards!
+            broadcast({
+              type: 'telemetry',
+              frame: state.frameCount,
+              signal: state.lastSignal || 80,
+              baseline: state.baselineSignal || 80,
+              motion: true,
+              severity: 'none',
+              timestamp: Date.now(),
+              mode: state.systemMode,
+              network: state.connectedNetwork,
+              rssi: Math.round(-100 + ((state.lastSignal || 80) / 100) * 60),
+            });
+            saveEntities(state.entities);
           } else if (cmd.type === 'get_history') {
             (async () => {
               try {

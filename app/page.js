@@ -12,9 +12,10 @@ import SnnPanel from "./components/SnnPanel";
 import FloorplanView from "./components/FloorplanView";
 import PoseReconstructor from "./components/PoseReconstructor";
 import OccupantsRegistry from "./components/OccupantsRegistry";
+import WellnessDashboard from "./components/WellnessDashboard";
 import AiCopilot from "./components/AiCopilot";
 import SpatialBackground from "./components/SpatialBackground";
-import { Shield, ShieldAlert, Play, Square, RefreshCw, Volume2, VolumeX, AlertOctagon, Palette, Sparkles, Layers } from "lucide-react";
+import { Shield, ShieldAlert, Play, Square, RefreshCw, Volume2, VolumeX, AlertOctagon, Palette, Sparkles, Layers, Cpu, Radio, Wifi } from "lucide-react";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -344,6 +345,7 @@ export default function Home() {
         {activeTab === "snn" && <SnnPanel analysis={sensing.analysis} snnConfig={sensing.snnConfig} />}
         {activeTab === "occupants" && <OccupantsRegistry sensing={sensing} />}
         {activeTab === "security" && <SecurityView sensing={sensing} soundEnabled={soundEnabled} setSoundEnabled={setSoundEnabled} />}
+        {activeTab === "wellness" && <WellnessDashboard sensing={sensing} />}
       </main>
       <AiCopilot sensing={sensing} />
     </div>
@@ -354,11 +356,18 @@ function Header({ sensing, soundEnabled, setSoundEnabled, theme, setTheme, is3DM
   const security = sensing.analysis?.security || {};
   return (
     <header className="flex flex-col md:flex-row justify-between items-stretch md:items-center dynamic-island p-4 md:px-5 md:py-3 rounded-2xl transition-all duration-500 gap-3 antigravity-drift caustic-shimmer">
-      <div className="text-center md:text-left">
-        <h1 className="text-lg md:text-xl font-extrabold tracking-tight text-glimmer">Home Guardian Spatial Analytics</h1>
-        <p className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
-          {sensing.connected ? `Live WiFi CSI sensing pipeline • Frame #${sensing.telemetry?.frame || 0}` : "Connecting to sensing server..."}
-        </p>
+      <div className="flex items-center gap-3 text-center md:text-left justify-center md:justify-start">
+        <img 
+          src="/guardian_shield_logo.png" 
+          alt="Home Guardian Shield Logo" 
+          className="w-9 h-9 rounded-xl hover:scale-110 transition-all duration-500 border border-cyan-500/30 shadow-[0_0_15px_rgba(34,211,238,0.2)] hidden sm:block cursor-pointer"
+        />
+        <div>
+          <h1 className="text-lg md:text-xl font-extrabold tracking-tight text-glimmer">Home Guardian Spatial Analytics</h1>
+          <p className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
+            {sensing.connected ? `Live WiFi CSI sensing pipeline • Frame #${sensing.telemetry?.frame || 0}` : "Connecting to sensing server..."}
+          </p>
+        </div>
       </div>
       <div className="flex flex-wrap items-center justify-center md:justify-end gap-2.5">
         {/* Spatial 3D Immersive Toggle */}
@@ -407,20 +416,9 @@ function Header({ sensing, soundEnabled, setSoundEnabled, theme, setTheme, is3DM
         )}
 
         {sensing.connected ? (
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-mono text-[var(--text-muted)] hidden xs:inline">PIPELINE:</span>
-            <select
-              value={sensing.mode}
-              onChange={(e) => sensing.changeMode(e.target.value)}
-              disabled={sensing.mode === "local-simulation"}
-              className="bg-black/40 border border-[var(--border-glass)] px-3 py-1.5 rounded-full text-[10px] font-mono text-[var(--cyan)] font-bold focus:outline-none cursor-pointer hover:border-[var(--cyan)]/50 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <option value="simulation">📡 SIMULATION</option>
-              <option value="real">🔌 REAL HARDWARE</option>
-              {sensing.mode === "local-simulation" && (
-                <option value="local-simulation">⚠️ LOCAL SIMULATION FALLBACK</option>
-              )}
-            </select>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
+            <span className="status-dot" style={{ background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
+            🔌 REAL HARDWARE
           </div>
         ) : (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold border border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)] animate-pulse">
@@ -444,9 +442,109 @@ function DashboardView({ sensing, selectedEntityId, setSelectedEntityId, theme, 
   const selectedEntity = entities.find(e => e.id === selectedEntityId) || entities[0];
   const effectiveSelectedEntityId = selectedEntity?.id || null;
 
+  const net = sensing.connectedNetwork;
+  const formatBps = (bps) => {
+    if (bps === undefined || bps === null) return "0.0 bps";
+    if (bps > 1000000) return `${(bps / 1000000).toFixed(1)} Mbps`;
+    if (bps > 1000) return `${(bps / 1000).toFixed(1)} Kbps`;
+    return `${bps} bps`;
+  };
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[2.5fr_1fr] gap-4 flex-1 min-h-0">
       <div className="flex flex-col gap-4 min-h-0">
+
+        {/* Live WiFi Hardware Telemetry & Link Console */}
+        {net && (
+          <div className="glass p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-4 border border-[var(--border-glass)] bg-black/25 shadow-lg antialiased transition-all duration-300 hover:border-cyan-500/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-[0_0_12px_rgba(34,211,238,0.1)]">
+                <Wifi size={18} className="animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">
+                    {net.iface || "wlo1"}
+                  </span>
+                  <span className="text-sm font-extrabold text-gray-200">{net.ssid || "Connected AP"}</span>
+                  {net.power_save === "on" && (
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20 animate-pulse" title="WiFi Power Saving is enabled. This triggers latency spikes (10ms+) and downshifts idle link rates!">
+                      Power Save Active ⚠️
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] font-mono text-[var(--text-muted)] mt-1 flex flex-wrap items-center gap-2.5">
+                  <span>BSSID: <span className="text-gray-300 font-semibold">{net.bssid || "detecting..."}</span></span>
+                  <span>•</span>
+                  <span>Band: <span className="text-gray-300 font-semibold">{net.band || "5GHz"}</span></span>
+                  <span>•</span>
+                  <span>Ch: <span className="text-gray-300 font-semibold">{net.channel || "44"}</span></span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-6 pr-1">
+              {/* Latency & Jitter Diagnostic */}
+              <div 
+                className="text-right cursor-help"
+                title={net.latency?.samples ? `Samples: [${net.latency.samples.join(", ")}] ms (Min: ${net.latency.min_ms}ms, Median: ${net.latency.median_ms}ms, P95: ${net.latency.p95_ms}ms, Max: ${net.latency.max_ms}ms, Total: ${net.latency.sample_count})` : "Ping metrics"}
+              >
+                <span className="text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider block">gateway ping / jitter</span>
+                <span className="text-xs font-mono font-bold text-cyan-300">
+                  ⚡ {net.latency?.avg_ms !== undefined && net.latency?.avg_ms !== null ? `${net.latency.avg_ms.toFixed(1)}ms` : "Detecting..."}{" "}
+                  <span className="text-[10px] text-gray-400">
+                    (±{net.latency?.jitter_ms !== undefined && net.latency?.jitter_ms !== null ? `${net.latency.jitter_ms.toFixed(1)}ms` : "0.0ms"} jt)
+                  </span>
+                </span>
+              </div>
+
+              {/* Throughput Efficiency */}
+              <div className="text-right hidden sm:block">
+                <span className="text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider block">capacity / expected tput</span>
+                <span className="text-xs font-mono font-bold text-gray-200">
+                  🚀 {net.expected_throughput_mbps !== undefined && net.expected_throughput_mbps !== null ? `${net.expected_throughput_mbps.toFixed(1)}` : "0.0"} Mbps{" "}
+                  <span className="text-[10px] text-gray-400">
+                    (active: {formatBps(net.rx_bps)})
+                  </span>
+                </span>
+              </div>
+
+              {/* Airtime & Retries */}
+              <div className="text-right">
+                <span className="text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider block">airtime utilization / retries</span>
+                <span className="text-xs font-mono font-bold text-amber-400">
+                  📊 {net.channel_utilization_pct !== undefined && net.channel_utilization_pct !== null ? `${net.channel_utilization_pct.toFixed(1)}%` : "Gathering..."}{" "}
+                  <span className="text-[10px] text-gray-400">
+                    (retries: {net.tx_retry_rate_per_sec !== undefined && net.tx_retry_rate_per_sec !== null ? `${net.tx_retry_rate_per_sec.toFixed(1)}/s` : "0.0/s"})
+                  </span>
+                </span>
+              </div>
+
+              {/* Link Quality */}
+              <div className="text-right flex items-center gap-3">
+                <div>
+                  <span className="text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider block">link quality</span>
+                  <span className="text-sm font-mono font-black text-emerald-400">
+                    {net.rssi !== undefined && net.rssi !== null ? `${net.rssi} dBm` : "N/A"} <span className="text-[10px] text-gray-400">({net.signal !== undefined && net.signal !== null ? `${net.signal}%` : "0%"})</span>
+                  </span>
+                </div>
+                <div className="flex items-end gap-[1.5px] h-4">
+                  {[20, 40, 60, 80].map((thr, idx) => (
+                    <div
+                       key={idx}
+                       className="w-[3px] rounded-sm transition-all"
+                       style={{
+                         height: `${40 + idx * 20}%`,
+                         background: (net.signal || 0) > thr ? "#10b981" : "rgba(255,255,255,0.08)",
+                         boxShadow: (net.signal || 0) > thr ? "0 0 6px #10b981" : "none"
+                       }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Upper radar console and 3D pose fusion panel */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -493,18 +591,6 @@ function SecurityView({ sensing, soundEnabled, setSoundEnabled }) {
           <p className="text-[10px] text-[var(--text-muted)] font-mono">Real-time room perimeter surveillance via multi-path scattering analysis</p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-          {/* Preset switch dropdown */}
-          <select
-            value={security.preset || "residential"}
-            onChange={(e) => sensing.changePreset(e.target.value)}
-            className="bg-black/60 border border-[var(--border-glass)] px-3 py-1.5 rounded-lg text-xs font-mono text-cyan-400 focus:outline-none min-h-[38px] cursor-pointer"
-          >
-            <option value="residential">Residential Home</option>
-            <option value="livestock">Livestock Farm</option>
-            <option value="security">High-Security Room</option>
-            <option value="everything">Ultimate Demo (Everything)</option>
-          </select>
-
           {/* Trigger manual alarm */}
           <button
             onClick={() => sensing.triggerAlarm("MANUAL EMERGENCY ACTION: Manual panel panic toggle activated")}

@@ -1,0 +1,38 @@
+# ==============================================================================
+# Docker Build Ignore File (aligned with RuView production standards)
+# ==============================================================================
+
+# Node dependencies and builds
+node_modules/
+.next/
+out/
+build/
+
+# Python caching and environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+venv/
+.pytest_cache/
+
+# Databases and runtime configurations
+*.db
+*.db-journal
+*.sqlite
+.env
+.env.*
+*.log
+
+# Git and tooling configs
+.git/
+.github/
+.vscode/
+.claude/
+.claude-flow/
+.claude-plugin/
+artifacts/
+temp/
+tmp/

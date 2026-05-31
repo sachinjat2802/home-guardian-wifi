@@ -1,0 +1,27 @@
+{
+  "project": "Home Guardian WiFi",
+  "guidelines": {
+    "nextjs": {
+      "rules": [
+        "Follow rules defined in AGENTS.md for breaking Next.js changes.",
+        "Always keep UI styles harmonious using CSS Glassmorphism and the Outfit/Inter google fonts.",
+        "Never use TailwindCSS unless explicitly requested; rely on vanilla CSS variables in global styles."
+      ]
+    },
+    "python_backend": {
+      "rules": [
+        "Port 8080/tcp is the unified Rest API and WebSocket gateway.",
+        "Maintain the high-performance PyTorch inference loop on local CUDA / CPU hardware.",
+        "Always calculate median_ms and p95_ms on gateway latency RTT rolling buffers (limit=30).",
+        "Keep the RuView Butterworth bandpass filters and autocorrelation peak detectors intact inside engine.py."
+      ]
+    },
+    "database": {
+      "rules": [
+        "The primary DB is wifi_guardian.db in project root.",
+        "Verify table structures (vitals, activities, daily_summaries, events) before insertions.",
+        "Always catch SQLite exceptions to enable self-healing database restoration."
+      ]
+    }
+  }
+}

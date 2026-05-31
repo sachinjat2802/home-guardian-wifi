@@ -1,0 +1,45 @@
+{
+  "room": {
+    "name": "Main Living Space & Master Sanctuary",
+    "width_meters": 10.0,
+    "length_meters": 10.0
+  },
+  "nodes": [
+    {
+      "id": "node-1",
+      "name": "Primary PCIe Host Card (wlo1)",
+      "role": "Receiver",
+      "coordinates": {
+        "x": 10.0,
+        "y": 10.0,
+        "z": 1.2
+      },
+      "calibrated_baseline_rssi": -30,
+      "path_loss_exponent": 2.0
+    },
+    {
+      "id": "node-2",
+      "name": "Auxiliary Virtual Receiver B",
+      "role": "Receiver",
+      "coordinates": {
+        "x": 90.0,
+        "y": 10.0,
+        "z": 1.2
+      },
+      "calibrated_baseline_rssi": -35,
+      "path_loss_exponent": 2.2
+    },
+    {
+      "id": "node-3",
+      "name": "Central Tx Transmitter Gateway (Default Gateway)",
+      "role": "Transmitter",
+      "coordinates": {
+        "x": 50.0,
+        "y": 90.0,
+        "z": 2.1
+      },
+      "calibrated_baseline_rssi": -25,
+      "path_loss_exponent": 1.8
+    }
+  ]
+}

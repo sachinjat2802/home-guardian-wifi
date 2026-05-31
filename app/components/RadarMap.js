@@ -229,9 +229,9 @@ export default function RadarMap({ telemetry, analysis, selectedEntityId, onSele
 
               {/* Dynamic triangulation vector lines */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
-                {selectedEntity.trilat.distances.map((dist) => (
+                {selectedEntity.trilat.distances.map((dist, idx) => (
                   <line 
-                    key={`line-${dist.id}`}
+                    key={`line-${dist.id || idx}`}
                     x1={`${dist.x}%`} 
                     y1={`${dist.y}%`} 
                     x2={`${selectedEntity.x}%`} 
@@ -246,9 +246,9 @@ export default function RadarMap({ telemetry, analysis, selectedEntityId, onSele
               </svg>
 
               {/* Triangulation search circles */}
-              {selectedEntity.trilat.distances.map((dist) => (
+              {selectedEntity.trilat.distances.map((dist, idx) => (
                 <div 
-                  key={`circle-${dist.id}`}
+                  key={`circle-${dist.id || idx}`}
                   className="absolute z-[2] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[var(--accent)]/15 pointer-events-none"
                   style={{
                     left: `${dist.x}%`,

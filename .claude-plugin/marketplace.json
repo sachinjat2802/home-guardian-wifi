@@ -1,0 +1,40 @@
+{
+  "name": "home-guardian",
+  "version": "1.2.0",
+  "displayName": "Home Guardian WiFi Toolkit",
+  "description": "Unified CLI command center to diagnose, control, and query high-fidelity WiFi biometric vitals.",
+  "publisher": "Antigravity",
+  "engines": {
+    "claude": "^0.1.0"
+  },
+  "categories": [
+    "Developer Tools",
+    "Sensing & Automation"
+  ],
+  "commands": [
+    {
+      "name": "guardian-status",
+      "description": "Exposes real-time system and hardware diagnostics, auditing scientific packages, locked zombified PIDs, and WiFi power-saving states.",
+      "pattern": "guardian-status",
+      "command": "python3 .claude-flow/diagnose.py"
+    },
+    {
+      "name": "guardian-start",
+      "description": "Safely kills zombified port 8080 listeners and boots the high-performance Python spatial engine.",
+      "pattern": "guardian-start",
+      "command": "bash start_backend.sh"
+    },
+    {
+      "name": "guardian-vitals",
+      "description": "Fetches the latest registered occupant vital sign signatures directly from the SQLite analytics database.",
+      "pattern": "guardian-vitals",
+      "command": "sqlite3 wifi_guardian.db \"SELECT occupant_id, heart_rate, breathing_rate, hrv, temp, spo2, datetime(timestamp/1000, 'unixepoch', 'localtime') FROM vital_snapshots ORDER BY timestamp DESC LIMIT 5;\""
+    },
+    {
+      "name": "guardian-optimize",
+      "description": "Optimizes your host network adapter parameters by turning high-latency WiFi power saving off.",
+      "pattern": "guardian-optimize",
+      "command": "sudo iw dev wlo1 set power_save off && echo '✅ Adapter optimized for micro-Doppler accuracy!'"
+    }
+  ]
+}

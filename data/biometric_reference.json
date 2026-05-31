@@ -1,0 +1,49 @@
+{
+  "reference_standard": "Clinical & Ayurvedic Biometric Bounds v1.0",
+  "vital_ranges": {
+    "heart_rate_bpm": {
+      "bradycardia_threshold": 45,
+      "resting_ideal_low": 55,
+      "resting_ideal_high": 75,
+      "active_normal_high": 120,
+      "tachycardia_threshold": 130
+    },
+    "breathing_rate_rpm": {
+      "bradypnea_threshold": 6,
+      "resting_ideal_low": 11,
+      "resting_ideal_high": 16,
+      "active_normal_high": 24,
+      "tachypnea_threshold": 30
+    },
+    "hrv_ms": {
+      "severe_fatigue_threshold": 15,
+      "normal_low": 30,
+      "optimal_high": 120
+    },
+    "temperature_c": {
+      "hypothermia_threshold": 35.0,
+      "normal_low": 36.1,
+      "normal_high": 37.2,
+      "fever_threshold": 38.5
+    },
+    "spo2_percent": {
+      "hypoxia_critical": 90,
+      "suboptimal": 94,
+      "normal_high": 100
+    }
+  },
+  "ayurvedic_dosha_mapping": {
+    "vata": {
+      "indicators": "Elevated breathing rates (>18 RPM), high HRV amplitude fluctuations under resting conditions, light/interrupted sleep architecture.",
+      "recommending_therapies": "Warm Dinacharya fluids, slow pranayama (Nadi Shodhana), calming meditation."
+    },
+    "pitta": {
+      "indicators": "Elevated metabolic indices (avg skin temp >36.9 C), elevated average sleeping resting heart rate (>75 BPM), deep but intense sleep patterns.",
+      "recommending_therapies": "Cooling teas, sheetali pranayama, cooling oil massages."
+    },
+    "kapha": {
+      "indicators": "Slow baseline heart rate (<55 BPM), slow deep respiration (<10 RPM), prolonged heavy sleeping stages with high immobility factors.",
+      "recommending_therapies": "Invigorating yoga, stimulating pranayama (Kapalabhati), light warm diets."
+    }
+  }
+}

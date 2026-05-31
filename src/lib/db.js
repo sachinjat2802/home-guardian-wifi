@@ -218,13 +218,13 @@ export async function getDB() {
     if (count.count === 0) {
       await dbInstance.run(
         `INSERT INTO occupants (id, name, relationship, contactInfo, gender, healthStatus, age, targetBpm, notes, lastDetected) VALUES
-         ('target-1', 'User 123 (Sachin)', 'Family', 'sachin@wifi.guardian', 'Male', 'Excellent Vitals', 28, 72, 'Primary Admin & System Owner', 0),
-         ('target-2', 'User 124 (Jane)', 'Family', 'jane@wifi.guardian', 'Female', 'Normal Vitals', 26, 68, 'Monitored for deep sleep analysis', 0),
-         ('target-3', 'User 125 (Alice)', 'Relative', 'alice@hospital.net', 'Female', 'Heart Monitored', 64, 75, 'Elderly Care Routine - high HRV tracking', 0),
-         ('target-4', 'User 126 (Bob)', 'Friend', 'bob@contractor.com', 'Male', 'Normal Vitals', 35, 70, 'IT technician, local mesh trusted node', 0),
-         ('target-5', 'User 127 (Unknown)', 'Visitor', 'N/A', 'Unspecified', 'Suspicious Doppler', 0, 80, 'Temporary Visitor - alert on perimeter breach', 0)`
+         ('target-1', 'Sachin', 'Family', 'sachin@wifi.guardian', 'Male', 'Excellent Vitals', 28, 72, 'Primary Admin & System Owner', 0),
+         ('target-2', 'Kavita', 'Family', 'kavita@wifi.guardian', 'Female', 'Normal Vitals', 26, 68, 'Monitored for deep sleep analysis', 0),
+         ('target-3', 'Kirpa', 'Family', 'kirpa@wifi.guardian', 'Female', 'Heart Monitored', 64, 75, 'Elderly Care Routine - high HRV tracking', 0),
+         ('target-4', 'Rati Ram', 'Relative', 'ratiram@wifi.guardian', 'Male', 'Normal Vitals', 68, 70, 'Elderly Care Routine - high HRV tracking', 0),
+         ('target-5', 'Visitor', 'Visitor', 'N/A', 'Unspecified', 'Suspicious Doppler', 30, 80, 'Temporary Visitor - alert on perimeter breach', 0)`
       );
-      console.log("💾 [Database] Occupants reference table seeded with systematic Users, Gender, and Vitals.");
+      console.log("💾 [Database] Occupants reference table seeded with Sachin, Kavita, Kirpa, Rati Ram, and Visitor.");
     }
   } catch (e) {
     console.error("❌ [Database] Failed seeding occupants:", e);

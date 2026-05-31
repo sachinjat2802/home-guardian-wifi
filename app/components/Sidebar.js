@@ -11,6 +11,7 @@ const tabs = [
   { id: "snn", label: "SNN Engine", icon: Brain },
   { id: "occupants", label: "Occupants Registry", icon: Users },
   { id: "security", label: "Security", icon: Shield },
+  { id: "wellness", label: "Ambient Wellness", icon: Sparkles },
 ];
 
 async function fetchJson(url, options) {

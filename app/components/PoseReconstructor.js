@@ -5,7 +5,6 @@ import { User, ShieldAlert, Cpu, Heart, Wind, Compass, Sparkles, Moon } from "lu
 export default function PoseReconstructor({ entity, theme }) {
   const canvasRef = useRef(null);
   const hypnogramRef = useRef(null);
-  const [angle, setAngle] = useState(0);
 
   // Interactive Orbit Controls (Yaw/Pitch Mouse/Touch drag)
   const [isDragging, setIsDragging] = useState(false);
@@ -212,7 +211,6 @@ export default function PoseReconstructor({ entity, theme }) {
       
       const yawAngle = anglesRef.current.yaw;
       const pitchAngle = anglesRef.current.pitch;
-      setAngle(yawAngle);
 
       // Micro-fluctuation triggers based on heart rate / breathing
       const br = entity.vitals.breathingRate || 15;
@@ -750,7 +748,7 @@ export default function PoseReconstructor({ entity, theme }) {
             <h4 className="text-xs font-mono uppercase tracking-widest text-[var(--cyan)]">DensePose CSI Spatial Reconstruction</h4>
           </div>
           <span className="text-[9px] font-mono bg-black/40 border border-[var(--border-glass)] px-2 py-0.5 rounded text-[var(--accent)]">
-            Phase Coherence: {(0.85 + Math.sin(angle) * 0.05).toFixed(3)}
+            Phase Coherence: {(0.85 + Math.sin(Date.now() / 1000) * 0.05).toFixed(3)}
           </span>
         </div>
 

@@ -1,0 +1,58 @@
+{
+  "skill": "ayurvedic_health_assessment",
+  "displayName": "Ayurvedic Biometric Health Mapping Skill",
+  "description": "Synthesizes raw physical SQLite telemetry (HR, breathing, HRV, Temp, SpO2) into clinical-grade sleep summaries and holistic Ayurvedic health insights.",
+  "inputs": {
+    "occupant_id": {
+      "type": "string",
+      "description": "Target registered household member id (e.g. target-1 for Sachin).",
+      "required": true
+    },
+    "duration_days": {
+      "type": "integer",
+      "description": "Historical bounds for data gathering.",
+      "default": 7
+    }
+  },
+  "analytical_bounds": {
+    "vata_imbalance": {
+      "description": "High variability in heart rate (high HRV fluctuations) and rapid, shallow breathing (> 20 RPM) under sleep stress indicators.",
+      "triggers": {
+        "avg_breathing_rate": "> 18.0",
+        "hrv_variance": "high"
+      }
+    },
+    "pitta_imbalance": {
+      "description": "Elevated metabolic indices (body temp average > 36.9 C) combined with elevated average sleeping resting heart rate (> 75 BPM).",
+      "triggers": {
+        "avg_temp": "> 36.9",
+        "avg_heart_rate": "> 75.0"
+      }
+    },
+    "kapha_imbalance": {
+      "description": "Low baseline heart rate (< 55 BPM) accompanied by heavy, slow respiration (< 10 RPM) and prolonged resting immobility periods.",
+      "triggers": {
+        "avg_breathing_rate": "< 11.0",
+        "avg_heart_rate": "< 56.0"
+      }
+    }
+  },
+  "execution_pipeline": [
+    {
+      "step": 1,
+      "name": "Query SQLite Telemetry",
+      "description": "Pull last N days averages and variances from SQLite databases for the target family member.",
+      "action": "sqlite3 wifi_guardian.db \"SELECT AVG(heart_rate), AVG(breathing_rate), AVG(hrv), AVG(temp), AVG(spo2) FROM vital_snapshots WHERE occupant_id = '{{occupant_id}}' AND timestamp >= (strftime('%s', 'now') - {{duration_days}}*86400)*1000;\""
+    },
+    {
+      "step": 2,
+      "name": "Map Dosha Imbalances",
+      "description": "Apply trigger logic matrices to classify current health alignments into Vata, Pitta, or Kapha states."
+    },
+    {
+      "step": 3,
+      "name": "Generate Ayurvedic Health Protocol",
+      "description": "Formulate dynamic wellness recommendations, aligned to seasonal rhythms (Dinacharya), including specific pranayama (breathing) and meditation advice."
+    }
+  ]
+}

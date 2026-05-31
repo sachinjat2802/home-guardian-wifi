@@ -1,0 +1,30 @@
+# ==============================================================================
+# Production Dockerfile for Home Guardian Python Spatial & DSP Backend
+# ==============================================================================
+FROM python:3.11-slim
+
+# Prevent python from writing pyc files and buffering stdout/stderr
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install system dependencies for wireless auditing
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wireless-tools \
+    iw \
+    lsof \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy python requirements
+COPY gait_recognition_backend/ /app/gait_recognition_backend/
+COPY start_backend.sh /app/start_backend.sh
+
+# Install scientific python packages
+# Installs CPU PyTorch to keep the image size optimized for edge nodes
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir fastapi uvicorn numpy aiosqlite websockets sqlalchemy
+
+EXPOSE 8080
+
+CMD ["bash", "start_backend.sh"]

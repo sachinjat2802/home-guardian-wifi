@@ -11,8 +11,10 @@ export async function register() { // sensing pipeline reload
       const modulePath = 'file://' + process.cwd() + '/app/sensing/engine.js';
       const dynamicImport = new Function('modulePath', 'return import(modulePath)');
       const engine = await dynamicImport(modulePath);
-      engine.startSensingServer();
-      console.log('✅ [Next.js] Sensing server initialization called');
+      // Node-based sensing engine deactivated. 100% of background spatial sensing, 
+      // SNN modeling, and analytics are fully migrated to Python (uvicorn on port 8080).
+      // engine.startSensingServer();
+      console.log('🐍 [Next.js] Sensing loops bypassed. Python Unified Backend (8080) is the active engine.');
     } catch (err) {
       console.error('⚠️ [Next.js Startup] Failed to start sensing server dynamically:', err);
     }

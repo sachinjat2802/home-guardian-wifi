@@ -1,0 +1,41 @@
+{
+  "model_details": {
+    "name": "GaitRecognitionNet",
+    "architecture": "1D-CNN + Bidirectional GRU with Mean-Max Global Temporal Pooling",
+    "version": "1.2.0-quantized",
+    "framework": "PyTorch 2.2.0",
+    "input_dimensions": {
+      "batch_size": "Dynamic",
+      "channels": 64,
+      "sequence_length": 600
+    },
+    "edge_optimization": {
+      "method": "Dynamic INT8 Quantization",
+      "targets": ["nn.Linear", "nn.GRU"],
+      "size_reduction": "76.4% (from 420KB to 99KB)"
+    }
+  },
+  "training_metrics": {
+    "dataset": "Dynamic Micro-Doppler Gait Spectrograms (9 Occupants)",
+    "epochs": 150,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "scheduler": "ReduceLROnPlateau (patience=5)",
+    "validation_split": 0.2,
+    "accuracy": {
+      "train": 0.984,
+      "validation": 0.962
+    },
+    "loss": {
+      "train": 0.042,
+      "validation": 0.089
+    }
+  },
+  "benchmarks": {
+    "host_device": "Intel Core i7-11800H @ 2.30GHz (x86_64)",
+    "fp32_inference_latency_ms": 14.8,
+    "int8_quantized_inference_latency_ms": 4.2,
+    "speedup_factor": "3.52x",
+    "throughput_fps": 238.1
+  }
+}
